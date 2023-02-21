@@ -1,4 +1,4 @@
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from typing import List
 
 """
@@ -7,10 +7,10 @@ sklearn-like structure.
 """
 
 
-class VAEModel:
+class VAEModel(ABC):
 
     @abstractmethod
-    def fit(self, x: List[List[int]]):
+    def fit(self, x: List[List[List[int]]]):  # TODO List[Images]
         pass
 
     @abstractmethod

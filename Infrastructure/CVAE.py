@@ -11,7 +11,7 @@ Implementation of the most common version of the CVAE.
 class CVAE(VAEModel):
 
     def __init__(self,
-                #TODO hyperparams
+                 # TODO hyperparams
                  learning_rate: float = 0.001,
                  n_distributions: int = 5,
                  max_iter: int = -1):

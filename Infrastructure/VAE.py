@@ -19,23 +19,23 @@ class VAE(VAEModel):
                  max_iter: int = -1):
 
         if len(architecture_encoder) == 0:
-            raise IllegalArchitectureException(f"The architecture of the encoder cannot be empty")
+            raise IllegalArchitectureException("The architecture of the encoder cannot be empty")
 
         if len(architecture_decoder) == 0:
-            raise IllegalArchitectureException(f"The architecture of the decoder cannot be empty")
+            raise IllegalArchitectureException("The architecture of the decoder cannot be empty")
 
         if architecture_encoder[-1] < n_distributions * 2:
             raise IllegalArchitectureException(
                 f"The last layer of the encoder cannot be lower than {n_distributions * 2}")
 
-        if architecture_decoder[0] < n_distributions * 2:
+        if architecture_decoder[0] < n_distributions:
             raise IllegalArchitectureException(
-                f"The first layer of the decoder cannot be lower than {n_distributions * 2}")
+                f"The first layer of the decoder cannot be lower than {n_distributions}")
 
-        self.encoder = architecture_encoder
-        self.latent = n_distributions * 2
-        self.decoder = architecture_decoder
+        self.__encoder = architecture_encoder
+        self.__latent = [n_distributions * 2, n_distributions]
+        self.__decoder = architecture_decoder
 
-        self.learning_rate = learning_rate
+        self.__learning_rate = learning_rate
 
-        self.iterations = max_iter
+        self.__iterations = max_iter
