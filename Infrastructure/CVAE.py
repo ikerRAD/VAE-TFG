@@ -14,7 +14,7 @@ class CVAE(VAEModel):
                  # TODO hyperparams
                  learning_rate: float = 0.001,
                  n_distributions: int = 5,
-                 max_iter: int = -1):
+                 max_iter: int = -1) -> None:
         self.latent = n_distributions * 2
 
         self.learning_rate = learning_rate
