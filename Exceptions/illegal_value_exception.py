@@ -1,9 +1,9 @@
 """
-Exception for whn the given architecture is not possible.
+Exception for whn the given value is incorrect.
 """
 
 
-class IllegalArchitectureException(Exception):
+class IllegalValueException(Exception):
     def __init__(self, message: str) -> None:
         self.message: str = message
 

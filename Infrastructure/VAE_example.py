@@ -8,14 +8,16 @@ import time
 # Only the test sample because we do not need the typical train-test
 (train_images, _), (test_images, _) = tf.keras.datasets.mnist.load_data()
 
-'''
+"""
  For making all the images adjust to the same size
-'''
+"""
 
 
 def preprocess_images(images):
-    images = images.reshape((images.shape[0], 28, 28, 1)) / 255.  # Cuantas Imágenes x altura x anchura x nº canales
-    return np.where(images > .5, 1.0, 0.0).astype('float32')  # binariza
+    images = (
+        images.reshape((images.shape[0], 28, 28, 1)) / 255.0
+    )  # Cuantas Imágenes x altura x anchura x nº canales
+    return np.where(images > 0.5, 1.0, 0.0).astype("float32")  # binariza
 
 
 train_images = preprocess_images(train_images)
@@ -27,10 +29,14 @@ batch_size = 32
 test_size = 10000
 
 # Creating groups and shuffling them
-train_dataset = (tf.data.Dataset.from_tensor_slices(train_images)
-                 .shuffle(train_size).batch(batch_size))
-test_dataset = (tf.data.Dataset.from_tensor_slices(test_images)
-                .shuffle(test_size).batch(batch_size))
+train_dataset = (
+    tf.data.Dataset.from_tensor_slices(train_images)
+    .shuffle(train_size)
+    .batch(batch_size)
+)
+test_dataset = (
+    tf.data.Dataset.from_tensor_slices(test_images).shuffle(test_size).batch(batch_size)
+)
 
 
 class CVAE(tf.keras.Model):
@@ -43,9 +49,11 @@ class CVAE(tf.keras.Model):
             [
                 tf.keras.layers.InputLayer(input_shape=(28, 28, 1)),
                 tf.keras.layers.Conv2D(
-                    filters=32, kernel_size=3, strides=(2, 2), activation='relu'),
+                    filters=32, kernel_size=3, strides=(2, 2), activation="relu"
+                ),
                 tf.keras.layers.Conv2D(
-                    filters=64, kernel_size=3, strides=(2, 2), activation='relu'),
+                    filters=64, kernel_size=3, strides=(2, 2), activation="relu"
+                ),
                 tf.keras.layers.Flatten(),
                 # No activation
                 tf.keras.layers.Dense(latent_dim + latent_dim),
@@ -58,21 +66,32 @@ class CVAE(tf.keras.Model):
                 tf.keras.layers.Dense(units=7 * 7 * 32, activation=tf.nn.relu),
                 tf.keras.layers.Reshape(target_shape=(7, 7, 32)),
                 tf.keras.layers.Conv2DTranspose(
-                    filters=64, kernel_size=3, strides=2, padding='same',
-                    activation='relu'),
+                    filters=64,
+                    kernel_size=3,
+                    strides=2,
+                    padding="same",
+                    activation="relu",
+                ),
                 tf.keras.layers.Conv2DTranspose(
-                    filters=32, kernel_size=3, strides=2, padding='same',
-                    activation='relu'),
+                    filters=32,
+                    kernel_size=3,
+                    strides=2,
+                    padding="same",
+                    activation="relu",
+                ),
                 # No activation
                 tf.keras.layers.Conv2DTranspose(
-                    filters=1, kernel_size=3, strides=1, padding='same'),
+                    filters=1, kernel_size=3, strides=1, padding="same"
+                ),
             ]
         )
 
     @tf.function
     def sample(self, eps=None):
         if eps is None:
-            eps = tf.random.normal(shape=(100, self.latent_dim))  # 100 is the size of the sample
+            eps = tf.random.normal(
+                shape=(100, self.latent_dim)
+            )  # 100 is the size of the sample
         return self.decode(eps, apply_sigmoid=True)
 
     def encode(self, x):
@@ -81,7 +100,7 @@ class CVAE(tf.keras.Model):
 
     def reparameterize(self, mean, logvar):
         eps = tf.random.normal(shape=mean.shape)
-        return eps * tf.exp(logvar * .5) + mean
+        return eps * tf.exp(logvar * 0.5) + mean
 
     def decode(self, z, apply_sigmoid=False):
         logits = self.decoder(z)
@@ -96,21 +115,24 @@ optimizer = tf.keras.optimizers.Adam(1e-4)  # Tipo de descenso de gradiente
 
 
 def log_normal_pdf(sample, mean, logvar, raxis=1):  # DKL una manera de implementarlo
-    log2pi = tf.math.log(2. * np.pi)
+    log2pi = tf.math.log(2.0 * np.pi)
     return tf.reduce_sum(
-        -.5 * ((sample - mean) ** 2. * tf.exp(-logvar) + logvar + log2pi),
-        axis=raxis)
+        -0.5 * ((sample - mean) ** 2.0 * tf.exp(-logvar) + logvar + log2pi), axis=raxis
+    )
 
 
 def compute_loss(model, x):  # Función de coste
     mean, logvar = model.encode(x)
     z = model.reparameterize(mean, logvar)
     x_logit = model.decode(z)
-    cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)  # Función de coste entrada-salida
-    logpx_z = -tf.reduce_sum(cross_ent, axis=[1, 2, 3])  # Sumar toodo en uno
-    logpz = log_normal_pdf(z, 0., 0.)  # DKL normal
+    # cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)  # Función de coste entrada-salida
+    cross_ent = tf.keras.losses.mean_squared_error(x, x_logit)
+    logpx_z = -tf.reduce_sum(cross_ent, axis=[1, 2])  # Sumar toodo en uno
+    logpz = log_normal_pdf(z, 0.0, 0.0)  # DKL normal
     logqz_x = log_normal_pdf(z, mean, logvar)  # Tercer cálculo ¿quitar igual?
-    return -tf.reduce_mean(logpx_z + logpz - logqz_x)  # Hacer un modelo resistente a epsilon?
+    return -tf.reduce_mean(
+        logpx_z + logpz - logqz_x
+    )  # Hacer un modelo resistente a epsilon?
 
 
 @tf.function
@@ -122,8 +144,12 @@ def train_step(model, x, optimizer):
     """
     with tf.GradientTape() as tape:
         loss = compute_loss(model, x)
-        gradients = tape.gradient(loss, model.trainable_variables)  # Calcula el gradiente de TODOS los pesos del modelo
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables)) # Descenso de gradiente
+        gradients = tape.gradient(
+            loss, model.trainable_variables
+        )  # Calcula el gradiente de TODOS los pesos del modelo
+        optimizer.apply_gradients(
+            zip(gradients, model.trainable_variables)
+        )  # Descenso de gradiente
 
 
 epochs = 10
@@ -134,24 +160,25 @@ num_examples_to_generate = 16
 # keeping the random vector constant for generation (prediction) so
 # it will be easier to see the improvement.
 random_vector_for_generation = tf.random.normal(
-    shape=[num_examples_to_generate, latent_dim])
+    shape=[num_examples_to_generate, latent_dim]
+)
 model = CVAE(latent_dim)
 
 
 def generate_and_save_images(model, epoch, test_sample):
-    #mean, logvar = model.encode(test_sample)
-    #z = model.reparameterize(mean, logvar)
+    # mean, logvar = model.encode(test_sample)
+    # z = model.reparameterize(mean, logvar)
     z = random_vector_for_generation
     predictions = model.sample(z)
     fig = plt.figure(figsize=(4, 4))
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i + 1)
-        plt.imshow(predictions[i, :, :, 0], cmap='gray')
-        plt.axis('off')
+        plt.imshow(predictions[i, :, :, 0], cmap="gray")
+        plt.axis("off")
 
     # tight_layout minimizes the overlap between 2 sub-plots
-    plt.savefig('image_at_epoch_{:04d}.png'.format(epoch))
+    plt.savefig("image_at_epoch_{:04d}.png".format(epoch))
     plt.show()
 
 
@@ -173,6 +200,9 @@ for test_batch in test_dataset.take(1):
             loss(compute_loss(model, test_x))
         elbo = -loss.result()
         display.clear_output(wait=False)
-        print('Epoch: {}, Test set ELBO: {}, time elapse for current epoch: {}'
-              .format(epoch, elbo, end_time - start_time))
+        print(
+            "Epoch: {}, Test set ELBO: {}, time elapse for current epoch: {}".format(
+                epoch, elbo, end_time - start_time
+            )
+        )
         generate_and_save_images(model, epoch, test_sample)
