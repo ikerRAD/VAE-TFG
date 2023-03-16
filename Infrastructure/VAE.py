@@ -1,11 +1,19 @@
-from typing import List, Optional, Union, Tuple
+from typing import List, Optional, Tuple
 import tensorflow as tf
 import numpy as np
-from Exceptions.illegal_architecture_exception import IllegalArchitectureException
+from Domain.Exceptions.illegal_architecture_exception import (
+    IllegalArchitectureException,
+)
 from Domain.VAEModel import VAEModel
-from Exceptions.illegal_value_exception import IllegalValueException
-from Utils.proyect_typings import Image, NumpyList, GenericList
-from Utils.loss_function_selector import LossFunctionSelector
+from Domain.Exceptions.illegal_value_exception import IllegalValueException
+from Utils.proyect_typings import (
+    Image,
+    NumpyList,
+    GenericList,
+    NumpyMatrix,
+    GenericMatrix,
+    FlattenedImage,
+)
 from tensorflow.python.ops.numpy_ops import np_config
 
 np_config.enable_numpy_behavior()
@@ -41,22 +49,20 @@ class VAE(VAEModel):
         self.__channels: Optional[int] = None
         self.__encoder: Optional[tf.keras.Sequential] = None
         self.__decoder: Optional[tf.keras.Sequential] = None
+        self.__epsilon: Optional[GenericMatrix[float]] = None
 
         self.__encoder_architecture = architecture_encoder
         self.__decoder_architecture = architecture_decoder
         self.__latent: int = n_distributions
-        self.__epsilon: List[float] = tf.random.normal(
-            shape=(1, self.__latent)
-        )  # TODO mirar si esto renta ponerlo en el fit para ajustar el batch
 
         self.__learning: float = learning
         self.__optimizer = tf.keras.optimizers.Adam(self.__learning)
         self.__iterations: int = max_iter
 
-        # loss_selector = LossFunctionSelector()
+        # loss_selector = LossFunctionSelector() TODO recuperar
         # self.__loss_function = loss_selector.select('DKL_MSE')
 
-    def __train_step(self, x: Image) -> float:
+    def __train_step(self, x: GenericList[Image]) -> float:
         with tf.GradientTape() as tape:
             # loss: float = self.__loss_function(self, x)
             loss = self.___loss(x)
@@ -72,11 +78,8 @@ class VAE(VAEModel):
         for iteration in range(1, self.__iterations + 1):
             print(f"Iteration number {iteration}")
             self.generate_and_save_random_images()
-            partial_loss: List[float] = []
 
-            for t_x in train_images:
-                # TODO ver como hacer para obtener todas las imagenes de una
-                partial_loss.append(self.__train_step(t_x))
+            partial_loss: List[float] = [self.__train_step(train_images)]
 
             loss_values.append(tf.reduce_mean(partial_loss))
 
@@ -142,10 +145,12 @@ class VAE(VAEModel):
             self.__width = 28
             self.__channels = 1
         else:
-            train_images = dataset
+            train_images = np.array(dataset)
             self.__length = image_length
             self.__width = image_width
             self.__channels = n_channels
+
+        self.__epsilon = tf.random.normal(shape=(train_images.shape[0], self.__latent))
 
         self.__encoder = tf.keras.Sequential()
         for n_neurons in self.__encoder_architecture:
@@ -163,12 +168,7 @@ class VAE(VAEModel):
         if normalize_pixels:
             normalizer = 255.0
 
-        train_images = (
-            train_images.reshape(
-                (train_images.shape[0], self.__length * self.__width * self.__channels)
-            )
-            / normalizer
-        )  # Cuantas Imágenes x [altura x anchura x nº canales]
+        train_images = train_images / normalizer
 
         if discretize_pixels:
             train_images = np.where(train_images > 0.5, 1.0, 0.0).astype("float32")
@@ -185,11 +185,11 @@ class VAE(VAEModel):
         if return_loss:
             return loss_values
 
-    def __random_sample(self, n_samples: int = 1) -> NumpyList[NumpyList[float]]:
+    def __random_sample(self, n_samples: int = 1) -> NumpyMatrix[float]:
         return np.array(tf.random.normal(shape=(n_samples, self.__latent)))
 
     def generate_with_random_sample(self, n_samples: int = 1) -> NumpyList[Image]:
-        sample: NumpyList[NumpyList[float]] = self.__random_sample(n_samples)
+        sample: NumpyMatrix[float] = self.__random_sample(n_samples)
         return np.array(self.__decoder(sample))
 
     def generate_with_one_sample(
@@ -204,22 +204,32 @@ class VAE(VAEModel):
         return np.array(self.__decoder(samples))
 
     def __reparameterize(
-        self, means: NumpyList[float], logvars: NumpyList[float]
-    ) -> NumpyList[float]:
+        self, means: NumpyMatrix[float], logvars: NumpyMatrix[float]
+    ) -> NumpyMatrix[float]:
         return np.array(
             self.__epsilon * tf.exp(logvars * 0.5) + means
         )  # TODO does the sqrt of logvar make sense?
 
     def __encode(
-        self, x: Image
-    ) -> Tuple[NumpyList[float], NumpyList[float]]:  # TODO mirar el resize
-        means, logvars = tf.split(self.__encoder(x), num_or_size_splits=2, axis=1)
+        self, x: NumpyList[Image]
+    ) -> Tuple[NumpyMatrix[float], NumpyMatrix[float]]:
+        x_resized: NumpyList[FlattenedImage] = x.reshape(
+            (x.shape[0], self.__length * self.__width * self.__channels)
+        )
+        means, logvars = tf.split(
+            self.__encoder(x_resized), num_or_size_splits=2, axis=1
+        )
         return np.array(means), np.array(logvars)
 
-    def __decode(self, z: GenericList[float]) -> Image:  # TODO mirar el resize
-        return self.__decoder(z)
+    def __decode(
+        self, z: NumpyMatrix[float]
+    ) -> NumpyList[Image]:
+        images_resized: NumpyList[Image] = self.__decoder(z).reshape(
+            z.shape[0], self.__length, self.__width, self.__channels
+        )
+        return images_resized
 
-    def encode_and_decode(self, x: Image) -> Image:
+    def encode_and_decode(self, x: GenericList[Image]) -> NumpyList[Image]:
         means: NumpyList[float]
         logvars: NumpyList[float]
 
@@ -227,7 +237,7 @@ class VAE(VAEModel):
         z: NumpyList[float] = self.__reparameterize(means, logvars)
         x_generated: Image = self.__decode(z)
 
-        return x_generated
+        return np.array(x_generated)
 
     def __do_checks_for_init(
         self,
