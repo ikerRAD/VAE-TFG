@@ -1,8 +1,10 @@
 from abc import abstractmethod, ABC
-from typing import Optional
+from typing import Optional, Union, List
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from Utils.proyect_typings import Image, GenericList, NumpyList
+from numpy import ndarray
+
+from Utils.batch_calculators import Batch
 
 """
 Interface for all the VAE and CVAE implementations. The interface follows the a
@@ -14,37 +16,29 @@ class VAEModel(ABC, tf.keras.Model):
     @abstractmethod
     def fit_dataset(
         self,
-        dataset: Optional[GenericList[int]],
         return_loss: bool = False,
-        normalize_pixels: bool = True,
-        discretize_pixels: bool = False,
-        print_samples: bool = False,
-        batch_size: Optional[int] = None,
-        batch_is_cyclic: bool = True,
-        image_length: int = 28,
-        image_width: int = 28,
-        n_channels: int = 1,
-    ) -> Optional[NumpyList[float]]:
+        batch_size: int = 100,
+        batch_type: Optional[Union[str, Batch]] = None,
+        generate_images: bool = True,
+    ) -> Optional[List[float]]:
         pass
 
     @abstractmethod
-    def generate_with_random_sample(self, n_samples: int = 1) -> NumpyList[Image]:
+    def generate_with_random_sample(self, n_samples: int = 1) -> ndarray:
         pass
 
     @abstractmethod
     def generate_with_one_sample(
-        self, sample: GenericList[float], n_samples: int = 1
-    ) -> NumpyList[Image]:
+        self, sample: List[float], n_samples: int = 1
+    ) -> ndarray:
         pass
 
     @abstractmethod
-    def generate_with_multiple_samples(
-        self, samples: GenericList[GenericList[float]]
-    ) -> NumpyList[Image]:
+    def generate_with_multiple_samples(self, samples: ndarray) -> ndarray:
         pass
 
     @abstractmethod
-    def encode_and_decode(self, x: GenericList[Image]) -> NumpyList[Image]:
+    def encode_and_decode(self, x: ndarray) -> ndarray:
         pass
 
     @abstractmethod
@@ -70,20 +64,20 @@ class VAEModel(ABC, tf.keras.Model):
 
     def encode_decode_and_save_images(
         self,
-        images: GenericList[Image],
+        images: ndarray,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: NumpyList[Image] = self.encode_and_decode(images)
+        generated_images: ndarray = self.encode_and_decode(images)
 
         for i in range(len(images)):
-            image: Image = images[i]
-            image_generated: Image = generated_images[i]
+            image: ndarray = images[i]
+            image_generated: ndarray = generated_images[i]
             plt.figure()
             plt.subplot(1, 2, 1)
-            plt.imshow(image[0, :, :, :])
+            plt.imshow(image, cmap="gray")
             plt.axis("off")
             plt.subplot(1, 2, 2)
             plt.imshow(image_generated[0, :, :, :])
@@ -92,13 +86,13 @@ class VAEModel(ABC, tf.keras.Model):
             plt.show()
 
     def __create_figures(
-        self, generated_images: NumpyList[Image], path: str, image_type: str
+        self, generated_images: ndarray, path: str, image_type: str
     ) -> None:
         for i in range(len(generated_images)):
-            image: Image = generated_images[i]
+            image: ndarray = generated_images[i]
             plt.figure()
             plt.plot()
-            plt.imshow(image[0, :, :, :])
+            plt.imshow(image, cmap="gray")
             plt.axis("off")
             plt.savefig(f"{path}_{i + 1}.{image_type}")
             plt.show()
@@ -111,20 +105,18 @@ class VAEModel(ABC, tf.keras.Model):
         image_type: str = "png",
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: NumpyList[Image] = self.generate_with_random_sample(n_images)
+        generated_images: ndarray = self.generate_with_random_sample(n_images)
 
         self.__create_figures(generated_images, path, image_type)
 
     def generate_and_save_images_with_samples(
         self,
-        samples: GenericList[GenericList[float]],
+        samples: ndarray,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: NumpyList[Image] = self.generate_with_multiple_samples(
-            samples
-        )
+        generated_images: ndarray = self.generate_with_multiple_samples(samples)
 
         self.__create_figures(generated_images, path, image_type)

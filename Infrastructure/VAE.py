@@ -1,18 +1,21 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import tensorflow as tf
 import numpy as np
+from numpy import ndarray
+
 from Domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
+from Domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
 from Domain.VAEModel import VAEModel
 from Domain.Exceptions.illegal_value_exception import IllegalValueException
-from Utils.proyect_typings import (
-    Image,
-    NumpyList,
-    GenericList,
-    NumpyMatrix,
-    GenericMatrix,
-    FlattenedImage,
+from Utils.batch_calculators import (
+    Batch,
+    CommonBatch,
+    StrictBatch,
+    CyclicBatch,
+    RandomBatch,
+    RandomStrictBatch,
 )
 from tensorflow.python.ops.numpy_ops import np_config
 
@@ -26,11 +29,17 @@ Implementation of the most common version of the VAE.
 class VAE(VAEModel):
     def __init__(
         self,
-        architecture_encoder: GenericList[int],
-        architecture_decoder: GenericList[int],
+        architecture_encoder: List[int],
+        architecture_decoder: List[int],
+        dataset: Optional[List[int]] = None,
         learning: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
+        image_length: int = 28,
+        image_width: int = 28,
+        n_channels: int = 1,
+        normalize_pixels: bool = True,
+        discretize_pixels: bool = False,
         *args,
         **kwargs,
     ) -> None:
@@ -44,101 +53,18 @@ class VAE(VAEModel):
             max_iter,
         )
 
-        self.__length: Optional[int] = None
-        self.__width: Optional[int] = None
-        self.__channels: Optional[int] = None
-        self.__encoder: Optional[tf.keras.Sequential] = None
-        self.__decoder: Optional[tf.keras.Sequential] = None
-        self.__epsilon: Optional[GenericMatrix[float]] = None
-
-        self.__encoder_architecture = architecture_encoder
-        self.__decoder_architecture = architecture_decoder
-        self.__latent: int = n_distributions
-
-        self.__learning: float = learning
-        self.__optimizer = tf.keras.optimizers.Adam(self.__learning)
-        self.__iterations: int = max_iter
-
-        # loss_selector = LossFunctionSelector() TODO recuperar
-        # self.__loss_function = loss_selector.select('DKL_MSE')
-
-    def __train_step(self, x: GenericList[Image]) -> float:
-        with tf.GradientTape() as tape:
-            # loss: float = self.__loss_function(self, x)
-            loss = self.___loss(x)
-            gradients = tape.gradient(loss, self.trainable_variables)
-            self.__optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-            return loss
-
-    def __iterate_without_batch(
-        self, train_images: GenericList[Image]
-    ) -> NumpyList[float]:
-        loss_values: List[float] = []
-
-        for iteration in range(1, self.__iterations + 1):
-            print(f"Iteration number {iteration}")
-            self.generate_and_save_random_images()
-
-            partial_loss: List[float] = [self.__train_step(train_images)]
-
-            loss_values.append(tf.reduce_mean(partial_loss))
-
-        return np.array(loss_values)
-
-    def __iterate_with_normal_batch(
-        self, train_images: GenericList[Image]
-    ) -> NumpyList[float]:  # TODO adapt
-        loss_values: List[float] = []
-
-        for iteration in range(1, self.__iterations + 1):
-            print(f"Iteration number {iteration}")
-            self.generate_and_save_random_images()
-            partial_loss: List[float] = []
-
-            for t_x in train_images:
-                partial_loss.append(self.__train_step(t_x))
-
-            loss_values.append(tf.reduce_mean(partial_loss))
-
-        return np.array(loss_values)
-
-    def __iterate_with_cyclic_batch(
-        self, train_images: GenericList[Image]
-    ) -> NumpyList[float]:  # TODO adapt
-        loss_values: List[float] = []
-
-        for iteration in range(1, self.__iterations + 1):
-            print(f"Iteration number {iteration}")
-            self.generate_and_save_random_images()
-            partial_loss: List[float] = []
-
-            for t_x in train_images:
-                partial_loss.append(self.__train_step(t_x))
-
-            loss_values.append(tf.reduce_mean(partial_loss))
-
-        return np.array(loss_values)
-
-    def fit_dataset(
-        self,
-        dataset: Optional[GenericList[int]],
-        return_loss: bool = False,
-        normalize_pixels: bool = True,
-        discretize_pixels: bool = False,
-        print_samples: bool = False,
-        batch_size: Optional[int] = None,
-        batch_is_cyclic: bool = True,
-        image_length: int = 28,
-        image_width: int = 28,
-        n_channels: int = 1,
-    ) -> Optional[NumpyList[float]]:
         self.__do_checks_for_image_shape(
             image_length,
             image_width,
             n_channels,
         )
 
-        train_images: GenericList[Image]
+        self.__epsilon: Optional[ndarray] = None
+        self.__length:int
+        self.__width:int
+        self.__channels:int
+        self.__train_images:ndarray
+
         if dataset is None:
             (train_images, _), (_, _) = tf.keras.datasets.mnist.load_data()
             self.__length = 28
@@ -150,7 +76,28 @@ class VAE(VAEModel):
             self.__width = image_width
             self.__channels = n_channels
 
-        self.__epsilon = tf.random.normal(shape=(train_images.shape[0], self.__latent))
+        self.__train_images = train_images.reshape(
+            (train_images.shape[0], self.__length, self.__width, self.__channels)
+        )
+
+        normalizer: float = 0.0
+        if normalize_pixels:
+            normalizer = 255.0
+
+        self.__train_images = self.__train_images / normalizer
+
+        if discretize_pixels:
+            self.__train_images = np.where(self.__train_images > 0.5, 1.0, 0.0).astype(
+                "float32"
+            )
+
+        self.__encoder_architecture: List[int] = architecture_encoder
+        self.__decoder_architecture: List[int] = architecture_decoder
+        self.__latent: int = n_distributions
+
+        self.__learning: float = learning
+        self.__optimizer = tf.keras.optimizers.Adam(self.__learning)
+        self.__iterations: int = max_iter
 
         self.__encoder = tf.keras.Sequential()
         for n_neurons in self.__encoder_architecture:
@@ -164,56 +111,112 @@ class VAE(VAEModel):
             tf.keras.layers.Dense(self.__length * self.__width * self.__channels)
         )
 
-        normalizer: float = 0.0
-        if normalize_pixels:
-            normalizer = 255.0
+        # loss_selector = LossFunctionSelector() TODO recuperar
+        # self.__loss_function = loss_selector.select('DKL_MSE')
 
-        train_images = train_images / normalizer
+    def __train_step(self, x: ndarray) -> float:
+        with tf.GradientTape() as tape:
+            # loss: float = self.__loss_function(self, x)
+            loss = self.___loss(x)
+            gradients = tape.gradient(loss, self.trainable_variables)
+            self.__optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            return loss
 
-        if discretize_pixels:
-            train_images = np.where(train_images > 0.5, 1.0, 0.0).astype("float32")
+    def __iterate_without_batch(
+        self, train_images: ndarray, generate_images
+    ) -> List[float]:
+        loss_values: List[float] = []
 
-        loss_values: NumpyList[float]
-        if batch_size is None:
-            loss_values = self.__iterate_without_batch(train_images)
+        for iteration in range(1, self.__iterations + 1):
+            print(f"Iteration number {iteration}")
+            if generate_images:
+                self.generate_and_save_random_images()
+
+            partial_loss: List[float] = [self.__train_step(train_images)]
+
+            loss_values.append(tf.reduce_mean(partial_loss))
+
+        return loss_values
+
+    def __iterate_with_batch(self, the_batch: Batch, generate_images) -> List[float]:
+        loss_values: List[float] = []
+        train_images: ndarray
+
+        try:
+            for iteration in range(1, self.__iterations + 1):
+                print(f"Iteration number {iteration}")
+                if generate_images:
+                    self.generate_and_save_random_images()
+
+                train_images = the_batch.next()
+                partial_loss: List[float] = [self.__train_step(train_images)]
+
+                loss_values.append(tf.reduce_mean(partial_loss))
+        except NoMoreBatchesException as termination:
+            print(str(termination))
+
+        return loss_values
+
+    def fit_dataset(
+        self,
+        return_loss: bool = False,
+        batch_size: int = 100,
+        batch_type: Optional[Union[str, Batch]] = None,
+        generate_images: bool = True,
+    ) -> Optional[List[float]]:
+        loss_values: List[float]
+        if batch_type is None:
+            self.__epsilon = tf.random.normal(
+                shape=(self.__train_images.shape[0], self.__latent)
+            )
+            loss_values = self.__iterate_without_batch(
+                self.__train_images, generate_images
+            )
         else:
-            if batch_is_cyclic:
-                loss_values = self.__iterate_with_cyclic_batch(train_images)
+            self.__epsilon = tf.random.normal(shape=(batch_size, self.__latent))
+            the_batch: Batch
+            if batch_type == "common":
+                the_batch = CommonBatch()
+            elif batch_type == "strict":
+                the_batch = StrictBatch()
+            elif batch_type == "cyclic":
+                the_batch = CyclicBatch()
+            elif batch_type == "random":
+                the_batch = RandomBatch()
+            elif batch_type == "random_strict":
+                the_batch = RandomStrictBatch()
             else:
-                loss_values = self.__iterate_with_normal_batch(train_images)
+                the_batch = batch_type
+
+            the_batch.set_up(self.__train_images, batch_size)
+            loss_values = self.__iterate_with_batch(the_batch, generate_images)
 
         if return_loss:
             return loss_values
 
-    def __random_sample(self, n_samples: int = 1) -> NumpyMatrix[float]:
+    def __random_sample(self, n_samples: int = 1) -> ndarray:
         return np.array(tf.random.normal(shape=(n_samples, self.__latent)))
 
-    def generate_with_random_sample(self, n_samples: int = 1) -> NumpyList[Image]:
-        sample: NumpyMatrix[float] = self.__random_sample(n_samples)
-        return np.array(self.__decoder(sample))
+    def generate_with_random_sample(self, n_samples: int = 1) -> ndarray:
+        sample: ndarray = self.__random_sample(n_samples)
+        return np.array(self.__decode(sample))
 
     def generate_with_one_sample(
-        self, sample: GenericList[float], n_samples: int = 1
-    ) -> NumpyList[Image]:
-        samples: GenericList[GenericList[float]] = [sample for _ in range(n_samples)]
-        return np.array(self.__decoder(samples))
+        self, sample: List[float], n_samples: int = 1
+    ) -> ndarray:
+        samples: ndarray = np.array([sample for _ in range(n_samples)])
+        return np.array(self.__decode(samples))
 
-    def generate_with_multiple_samples(
-        self, samples: GenericList[GenericList[float]]
-    ) -> NumpyList[Image]:
-        return np.array(self.__decoder(samples))
+    def generate_with_multiple_samples(self, samples: ndarray) -> ndarray:
+        return np.array(self.__decode(samples))
 
-    def __reparameterize(
-        self, means: NumpyMatrix[float], logvars: NumpyMatrix[float]
-    ) -> NumpyMatrix[float]:
+    def __reparameterize(self, means: ndarray, logvars: ndarray) -> ndarray:
         return np.array(
             self.__epsilon * tf.exp(logvars * 0.5) + means
         )  # TODO does the sqrt of logvar make sense?
 
-    def __encode(
-        self, x: NumpyList[Image]
-    ) -> Tuple[NumpyMatrix[float], NumpyMatrix[float]]:
-        x_resized: NumpyList[FlattenedImage] = x.reshape(
+    def __encode(self, x: ndarray) -> Tuple[ndarray, ndarray]:
+        x_resized: ndarray = x.reshape(
             (x.shape[0], self.__length * self.__width * self.__channels)
         )
         means, logvars = tf.split(
@@ -221,28 +224,29 @@ class VAE(VAEModel):
         )
         return np.array(means), np.array(logvars)
 
-    def __decode(
-        self, z: NumpyMatrix[float]
-    ) -> NumpyList[Image]:
-        images_resized: NumpyList[Image] = self.__decoder(z).reshape(
-            z.shape[0], self.__length, self.__width, self.__channels
+    def __decode(self, z: ndarray) -> ndarray:
+        images_resized: ndarray = self.__decoder(z).reshape(
+            (z.shape[0], self.__length, self.__width, self.__channels)
         )
         return images_resized
 
-    def encode_and_decode(self, x: GenericList[Image]) -> NumpyList[Image]:
-        means: NumpyList[float]
-        logvars: NumpyList[float]
+    def encode_and_decode(self, x: ndarray) -> ndarray:
+        means: ndarray
+        logvars: ndarray
 
-        means, logvars = self.__encode(x)
-        z: NumpyList[float] = self.__reparameterize(means, logvars)
-        x_generated: Image = self.__decode(z)
+        means, logvars = self.__encode(np.array(x))
+        z: ndarray = self.__reparameterize(means, logvars)
+        x_generated: ndarray = self.__decode(z)
 
         return np.array(x_generated)
 
+    def save_model(self, path: Optional[str], name: Optional[str]) -> None:
+        pass
+
     def __do_checks_for_init(
         self,
-        architecture_encoder: GenericList[int],
-        architecture_decoder: GenericList[int],
+        architecture_encoder: List[int],
+        architecture_decoder: List[int],
         learning: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
@@ -332,6 +336,7 @@ class VAE(VAEModel):
         cross_ent = tf.keras.losses.mean_squared_error(
             x, x_logit
         )  # TODO no es cross ent
+        cross_ent = tf.reduce_sum(cross_ent, axis=[1, 2])
         logpz = self.___log_normal_pdf(z, 0.0, 0.0)  # DKL normal
         logqz_x = self.___log_normal_pdf(
             z, mean, logvar
