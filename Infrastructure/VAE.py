@@ -131,7 +131,7 @@ class VAE(VAEModel):
         for iteration in range(1, self.__iterations + 1):
             print(f"Iteration number {iteration}")
             if generate_images:
-                self.generate_and_save_random_images()
+                self.generate_random_images(save=False)
 
             partial_loss: List[float] = [self.__train_step(train_images)]
 
@@ -147,7 +147,7 @@ class VAE(VAEModel):
             for iteration in range(1, self.__iterations + 1):
                 print(f"Iteration number {iteration}")
                 if generate_images:
-                    self.generate_and_save_random_images()
+                    self.generate_random_images(save=False)
 
                 train_images = the_batch.next()
                 partial_loss: List[float] = [self.__train_step(train_images)]
@@ -205,7 +205,9 @@ class VAE(VAEModel):
     def generate_with_one_sample(
         self, sample: List[float], n_samples: int = 1
     ) -> tf.Tensor:
-        samples: tf.Tensor = tf.convert_to_tensor([sample for _ in range(n_samples)], tf.float32)
+        samples: tf.Tensor = tf.convert_to_tensor(
+            [sample for _ in range(n_samples)], tf.float32
+        )
         return self.__decode(samples)
 
     def generate_with_multiple_samples(self, samples: tf.Tensor) -> tf.Tensor:

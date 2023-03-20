@@ -62,12 +62,13 @@ class VAEModel(ABC, tf.keras.Model):
 
         return path
 
-    def encode_decode_and_save_images(
+    def encode_decode_images(
         self,
         images: tf.Tensor,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
+        save: bool = True
     ) -> None:
         np_images: ndarray = images.numpy()
         path: str = self.__get_image_path(saving_path, name)
@@ -83,11 +84,12 @@ class VAEModel(ABC, tf.keras.Model):
             plt.subplot(1, 2, 2)
             plt.imshow(image_generated[0, :, :, :])
             plt.axis("off")
-            plt.savefig(f"{path}_{i + 1}.{image_type}")
+            if save:
+                plt.savefig(f"{path}_{i + 1}.{image_type}")
             plt.show()
 
     def __create_figures(
-        self, generated_images: ndarray, path: str, image_type: str
+        self, generated_images: ndarray, path: str, image_type: str, save:bool
     ) -> None:
         for i in range(len(generated_images)):
             image: ndarray = generated_images[i]
@@ -95,29 +97,32 @@ class VAEModel(ABC, tf.keras.Model):
             plt.plot()
             plt.imshow(image, cmap="gray")
             plt.axis("off")
-            plt.savefig(f"{path}_{i + 1}.{image_type}")
+            if save:
+                plt.savefig(f"{path}_{i + 1}.{image_type}")
             plt.show()
 
-    def generate_and_save_random_images(
+    def generate_random_images(
         self,
         n_images: int = 1,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
+        save: bool = True
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
         generated_images: ndarray = self.generate_with_random_sample(n_images).numpy()
 
-        self.__create_figures(generated_images, path, image_type)
+        self.__create_figures(generated_images, path, image_type, save)
 
-    def generate_and_save_images_with_samples(
+    def generate_images_with_samples(
         self,
         samples: tf.Tensor,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
+        save: bool = True
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
         generated_images: ndarray = self.generate_with_multiple_samples(samples).numpy()
 
-        self.__create_figures(generated_images, path, image_type)
+        self.__create_figures(generated_images, path, image_type, save)
