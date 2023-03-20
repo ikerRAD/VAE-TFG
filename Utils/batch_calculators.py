@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List
 
 import numpy as np
-from numpy import ndarray
+import tensorflow as tf
 
 from Domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
 
@@ -14,11 +14,11 @@ Generic skeleton to build up new batches
 
 class Batch(ABC):
     @abstractmethod
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         pass
 
     @abstractmethod
-    def next(self) -> ndarray:
+    def next(self) -> tf.Tensor:
         pass
 
 
@@ -30,12 +30,12 @@ When there is no next batch an exception is raised.
 
 class CommonBatch(Batch):
     def __init__(self) -> None:
-        self.__dataset: Optional[ndarray] = None
+        self.__dataset: Optional[tf.Tensor] = None
         self.__index_from: Optional[int] = None
         self.__index_to: Optional[int] = None
         self.__batch_size: Optional[int] = None
 
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         assert dataset.shape[0] > size
         assert size > 0
 
@@ -43,15 +43,14 @@ class CommonBatch(Batch):
         self.__index_from = 0
         self.__index_to = size
         self.__batch_size = size
-    def next(self) -> ndarray:
+
+    def next(self) -> tf.Tensor:
         assert self.__dataset is not None
 
         if self.__index_from >= self.__dataset.shape[0]:
             raise NoMoreBatchesException
 
-        batch_to_return: ndarray = self.__dataset[
-            self.__index_from : self.__index_to
-        ]
+        batch_to_return: tf.Tensor = self.__dataset[self.__index_from : self.__index_to]
 
         self.__index_from = self.__index_to
         self.__index_to = self.__index_to + self.__batch_size
@@ -67,12 +66,12 @@ to be smaller. When there is no next batch an exception is raised.
 
 class StrictBatch(Batch):
     def __init__(self) -> None:
-        self.__dataset: Optional[ndarray] = None
+        self.__dataset: Optional[tf.Tensor] = None
         self.__index_from: Optional[int] = None
         self.__index_to: Optional[int] = None
         self.__batch_size: Optional[int] = None
 
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         assert dataset.shape[0] > size
         assert size > 0
 
@@ -80,15 +79,14 @@ class StrictBatch(Batch):
         self.__index_from = 0
         self.__index_to = size
         self.__batch_size = size
-    def next(self) -> ndarray:
+
+    def next(self) -> tf.Tensor:
         assert self.__dataset is not None
 
         if self.__index_to > self.__dataset.shape[0]:
             raise NoMoreBatchesException
 
-        batch_to_return: ndarray = self.__dataset[
-            self.__index_from : self.__index_to
-        ]
+        batch_to_return: tf.Tensor = self.__dataset[self.__index_from : self.__index_to]
 
         self.__index_from = self.__index_to
         self.__index_to = self.__index_to + self.__batch_size
@@ -104,12 +102,12 @@ When the end of the dataset arrives, treats it as a cyclic data structure.
 
 class CyclicBatch(Batch):
     def __init__(self) -> None:
-        self.__dataset: Optional[ndarray] = None
+        self.__dataset: Optional[tf.Tensor] = None
         self.__index_from: Optional[int] = None
         self.__index_to: Optional[int] = None
         self.__batch_size: Optional[int] = None
 
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         assert dataset.shape[0] > size
         assert size > 0
 
@@ -117,10 +115,11 @@ class CyclicBatch(Batch):
         self.__index_from = 0
         self.__index_to = size
         self.__batch_size = size
-    def next(self) -> ndarray:
+
+    def next(self) -> tf.Tensor:
         assert self.__dataset is not None
 
-        batch_to_return: ndarray
+        batch_to_return: tf.Tensor
         if self.__index_to > self.__dataset.shape[0]:
             from1: int = self.__index_from
             to1: int = self.__dataset.shape[0]
@@ -128,9 +127,11 @@ class CyclicBatch(Batch):
             self.__index_from = 0
             self.__index_to = self.__index_to - self.__dataset.shape[0]
 
-            batch_to_return = np.append(
-                self.__dataset[from1:to1],
-                self.__dataset[self.__index_from : self.__index_to],
+            batch_to_return = tf.concat(
+                [
+                    self.__dataset[from1:to1],
+                    self.__dataset[self.__index_from : self.__index_to],
+                ],
                 axis=0,
             )
         else:
@@ -150,9 +151,9 @@ It is never known which batch will be chosen as next, it is random.
 
 class RandomBatch(Batch):
     def __init__(self) -> None:
-        self.__batches: Optional[List[ndarray]] = None
+        self.__batches: Optional[List[tf.Tensor]] = None
 
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         assert dataset.shape[0] > size
         assert size > 0
 
@@ -167,7 +168,7 @@ class RandomBatch(Batch):
         for from_batch, to_batch in zip(froms, tos):
             self.__batches.append(dataset[from_batch:to_batch])
 
-    def next(self) -> ndarray:
+    def next(self) -> tf.Tensor:
         assert self.__batches is not None
 
         return np.random.choice(self.__batches)
@@ -181,9 +182,9 @@ was meant to be smaller than the rest. It is never known which batch will be cho
 
 class RandomStrictBatch(Batch):
     def __init__(self) -> None:
-        self.__batches: Optional[List[ndarray]] = None
+        self.__batches: Optional[List[tf.Tensor]] = None
 
-    def set_up(self, dataset: ndarray, size: int) -> None:
+    def set_up(self, dataset: tf.Tensor, size: int) -> None:
         assert dataset.shape[0] > size
         assert size > 0
 
@@ -198,7 +199,7 @@ class RandomStrictBatch(Batch):
         for from_batch, to_batch in zip(froms, tos):
             self.__batches.append(dataset[from_batch:to_batch])
 
-    def next(self) -> ndarray:
+    def next(self) -> tf.Tensor:
         assert self.__batches is not None
 
         return np.random.choice(self.__batches)

@@ -1,7 +1,6 @@
 from typing import List, Optional, Tuple, Union
 import tensorflow as tf
 import numpy as np
-from numpy import ndarray
 
 from Domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
@@ -59,11 +58,11 @@ class VAE(VAEModel):
             n_channels,
         )
 
-        self.__epsilon: Optional[ndarray] = None
-        self.__length:int
-        self.__width:int
-        self.__channels:int
-        self.__train_images:ndarray
+        self.__epsilon: Optional[tf.Tensor] = None
+        self.__length: int
+        self.__width: int
+        self.__channels: int
+        self.__train_images: tf.Tensor
 
         if dataset is None:
             (train_images, _), (_, _) = tf.keras.datasets.mnist.load_data()
@@ -71,7 +70,7 @@ class VAE(VAEModel):
             self.__width = 28
             self.__channels = 1
         else:
-            train_images = np.array(dataset)
+            train_images = tf.convert_to_tensor(dataset, dtype=tf.float32)
             self.__length = image_length
             self.__width = image_width
             self.__channels = n_channels
@@ -87,8 +86,8 @@ class VAE(VAEModel):
         self.__train_images = self.__train_images / normalizer
 
         if discretize_pixels:
-            self.__train_images = np.where(self.__train_images > 0.5, 1.0, 0.0).astype(
-                "float32"
+            self.__train_images = tf.cast(
+                tf.where(self.__train_images > 0.5, 1.0, 0.0), tf.float32
             )
 
         self.__encoder_architecture: List[int] = architecture_encoder
@@ -99,7 +98,7 @@ class VAE(VAEModel):
         self.__optimizer = tf.keras.optimizers.Adam(self.__learning)
         self.__iterations: int = max_iter
 
-        self.__encoder = tf.keras.Sequential()
+        self.__encoder = tf.keras.Sequential()  # TODO activations
         for n_neurons in self.__encoder_architecture:
             self.__encoder.add(tf.keras.layers.Dense(n_neurons))
         self.__encoder.add(tf.keras.layers.Dense(self.__latent * 2))
@@ -114,7 +113,9 @@ class VAE(VAEModel):
         # loss_selector = LossFunctionSelector() TODO recuperar
         # self.__loss_function = loss_selector.select('DKL_MSE')
 
-    def __train_step(self, x: ndarray) -> float:
+    @tf.function
+    @tf.autograph.experimental.do_not_convert
+    def __train_step(self, x: tf.Tensor) -> float:
         with tf.GradientTape() as tape:
             # loss: float = self.__loss_function(self, x)
             loss = self.___loss(x)
@@ -123,7 +124,7 @@ class VAE(VAEModel):
             return loss
 
     def __iterate_without_batch(
-        self, train_images: ndarray, generate_images
+        self, train_images: tf.Tensor, generate_images
     ) -> List[float]:
         loss_values: List[float] = []
 
@@ -140,7 +141,7 @@ class VAE(VAEModel):
 
     def __iterate_with_batch(self, the_batch: Batch, generate_images) -> List[float]:
         loss_values: List[float] = []
-        train_images: ndarray
+        train_images: tf.Tensor
 
         try:
             for iteration in range(1, self.__iterations + 1):
@@ -194,51 +195,50 @@ class VAE(VAEModel):
         if return_loss:
             return loss_values
 
-    def __random_sample(self, n_samples: int = 1) -> ndarray:
-        return np.array(tf.random.normal(shape=(n_samples, self.__latent)))
+    def __random_sample(self, n_samples: int = 1) -> tf.Tensor:
+        return tf.random.normal(shape=(n_samples, self.__latent))
 
-    def generate_with_random_sample(self, n_samples: int = 1) -> ndarray:
-        sample: ndarray = self.__random_sample(n_samples)
-        return np.array(self.__decode(sample))
+    def generate_with_random_sample(self, n_samples: int = 1) -> tf.Tensor:
+        sample: tf.Tensor = self.__random_sample(n_samples)
+        return self.__decode(sample)
 
     def generate_with_one_sample(
         self, sample: List[float], n_samples: int = 1
-    ) -> ndarray:
-        samples: ndarray = np.array([sample for _ in range(n_samples)])
-        return np.array(self.__decode(samples))
+    ) -> tf.Tensor:
+        samples: tf.Tensor = tf.convert_to_tensor([sample for _ in range(n_samples)], tf.float32)
+        return self.__decode(samples)
 
-    def generate_with_multiple_samples(self, samples: ndarray) -> ndarray:
-        return np.array(self.__decode(samples))
+    def generate_with_multiple_samples(self, samples: tf.Tensor) -> tf.Tensor:
+        return self.__decode(samples)
 
-    def __reparameterize(self, means: ndarray, logvars: ndarray) -> ndarray:
-        return np.array(
-            self.__epsilon * tf.exp(logvars * 0.5) + means
-        )  # TODO does the sqrt of logvar make sense?
+    def __reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
+        return self.__epsilon * tf.exp(logvars * 0.5) + means
+        # TODO does the sqrt of logvar make sense?
 
-    def __encode(self, x: ndarray) -> Tuple[ndarray, ndarray]:
-        x_resized: ndarray = x.reshape(
+    def __encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        x_resized: tf.Tensor = x.reshape(
             (x.shape[0], self.__length * self.__width * self.__channels)
         )
         means, logvars = tf.split(
             self.__encoder(x_resized), num_or_size_splits=2, axis=1
         )
-        return np.array(means), np.array(logvars)
+        return means, logvars
 
-    def __decode(self, z: ndarray) -> ndarray:
-        images_resized: ndarray = self.__decoder(z).reshape(
+    def __decode(self, z: tf.Tensor) -> tf.Tensor:
+        images_resized: tf.Tensor = self.__decoder(z).reshape(
             (z.shape[0], self.__length, self.__width, self.__channels)
         )
         return images_resized
 
-    def encode_and_decode(self, x: ndarray) -> ndarray:
-        means: ndarray
-        logvars: ndarray
+    def encode_and_decode(self, x: tf.Tensor) -> tf.Tensor:
+        means: tf.Tensor
+        logvars: tf.Tensor
 
-        means, logvars = self.__encode(np.array(x))
-        z: ndarray = self.__reparameterize(means, logvars)
-        x_generated: ndarray = self.__decode(z)
+        means, logvars = self.__encode(x)
+        z: tf.Tensor = self.__reparameterize(means, logvars)
+        x_generated: tf.Tensor = self.__decode(z)
 
-        return np.array(x_generated)
+        return x_generated
 
     def save_model(self, path: Optional[str], name: Optional[str]) -> None:
         pass

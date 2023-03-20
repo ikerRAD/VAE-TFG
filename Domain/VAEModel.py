@@ -24,21 +24,21 @@ class VAEModel(ABC, tf.keras.Model):
         pass
 
     @abstractmethod
-    def generate_with_random_sample(self, n_samples: int = 1) -> ndarray:
+    def generate_with_random_sample(self, n_samples: int = 1) -> tf.Tensor:
         pass
 
     @abstractmethod
     def generate_with_one_sample(
         self, sample: List[float], n_samples: int = 1
-    ) -> ndarray:
+    ) -> tf.Tensor:
         pass
 
     @abstractmethod
-    def generate_with_multiple_samples(self, samples: ndarray) -> ndarray:
+    def generate_with_multiple_samples(self, samples: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
-    def encode_and_decode(self, x: ndarray) -> ndarray:
+    def encode_and_decode(self, x: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
@@ -64,16 +64,17 @@ class VAEModel(ABC, tf.keras.Model):
 
     def encode_decode_and_save_images(
         self,
-        images: ndarray,
+        images: tf.Tensor,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
     ) -> None:
+        np_images: ndarray = images.numpy()
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.encode_and_decode(images)
+        generated_images: ndarray = self.encode_and_decode(images).numpy()
 
         for i in range(len(images)):
-            image: ndarray = images[i]
+            image: ndarray = np_images[i]
             image_generated: ndarray = generated_images[i]
             plt.figure()
             plt.subplot(1, 2, 1)
@@ -105,18 +106,18 @@ class VAEModel(ABC, tf.keras.Model):
         image_type: str = "png",
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.generate_with_random_sample(n_images)
+        generated_images: ndarray = self.generate_with_random_sample(n_images).numpy()
 
         self.__create_figures(generated_images, path, image_type)
 
     def generate_and_save_images_with_samples(
         self,
-        samples: ndarray,
+        samples: tf.Tensor,
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.generate_with_multiple_samples(samples)
+        generated_images: ndarray = self.generate_with_multiple_samples(samples).numpy()
 
         self.__create_figures(generated_images, path, image_type)
