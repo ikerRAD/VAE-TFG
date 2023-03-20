@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Callable
 import tensorflow as tf
 import numpy as np
 
@@ -18,6 +18,8 @@ from Utils.batch_calculators import (
 )
 from tensorflow.python.ops.numpy_ops import np_config
 
+from Utils.loss_function_selector import LossFunctionSelector
+
 np_config.enable_numpy_behavior()
 
 """
@@ -30,6 +32,10 @@ class VAE(VAEModel):
         self,
         architecture_encoder: List[int],
         architecture_decoder: List[int],
+        encoder_activations: Optional[List[Union[str, Callable, None]]] = None,
+        decoder_activations: Optional[List[Union[str, Callable, None]]] = None,
+        encoder_output_activation: Union[str, Callable, None] = None,
+        decoder_output_activation: Union[str, Callable, None] = None,
         dataset: Optional[List[int]] = None,
         learning: float = 0.0001,
         n_distributions: int = 5,
@@ -47,6 +53,8 @@ class VAE(VAEModel):
         self.__do_checks_for_init(
             architecture_encoder,
             architecture_decoder,
+            encoder_activations,
+            decoder_activations,
             learning,
             n_distributions,
             max_iter,
@@ -92,33 +100,75 @@ class VAE(VAEModel):
 
         self.__encoder_architecture: List[int] = architecture_encoder
         self.__decoder_architecture: List[int] = architecture_decoder
+        self.__encoder_activations: Optional[
+            List[Union[str, Callable, None]]
+        ] = encoder_activations
+        self.__decoder_activations: Optional[
+            List[Union[str, Callable, None]]
+        ] = decoder_activations
+        self.__encoder_output_activation: Union[
+            str, Callable, None
+        ] = encoder_output_activation
+        self.__decoder_output_activation: Union[
+            str, Callable, None
+        ] = decoder_output_activation
         self.__latent: int = n_distributions
 
         self.__learning: float = learning
         self.__optimizer = tf.keras.optimizers.Adam(self.__learning)
         self.__iterations: int = max_iter
 
-        self.__encoder = tf.keras.Sequential()  # TODO activations
-        for n_neurons in self.__encoder_architecture:
-            self.__encoder.add(tf.keras.layers.Dense(n_neurons))
-        self.__encoder.add(tf.keras.layers.Dense(self.__latent * 2))
-
-        self.__decoder = tf.keras.Sequential()
-        for n_neurons in self.__decoder_architecture:
-            self.__decoder.add(tf.keras.layers.Dense(n_neurons))
-        self.__decoder.add(
-            tf.keras.layers.Dense(self.__length * self.__width * self.__channels)
+        n_neurons: int
+        self.__encoder = tf.keras.Sequential()
+        for i in range(len(self.__encoder_architecture)):
+            n_neurons = self.__encoder_architecture[i]
+            if self.__encoder_activations is None:
+                self.__encoder.add(tf.keras.layers.Dense(n_neurons))
+            else:
+                self.__encoder.add(
+                    tf.keras.layers.Dense(
+                        n_neurons, activation=self.__encoder_activations[i]
+                    )
+                )
+        self.__encoder.add(
+            tf.keras.layers.Dense(
+                self.__latent * 2, activation=self.__encoder_output_activation
+            )
         )
 
-        # loss_selector = LossFunctionSelector() TODO recuperar
-        # self.__loss_function = loss_selector.select('DKL_MSE')
+        self.__decoder = tf.keras.Sequential()
+        for i in range(len(self.__decoder_architecture)):
+            n_neurons = self.__decoder_architecture[i]
+            if self.__decoder_activations is None:
+                self.__decoder.add(tf.keras.layers.Dense(n_neurons))
+            else:
+                self.__decoder.add(
+                    tf.keras.layers.Dense(
+                        n_neurons, activation=self.__decoder_activations[i]
+                    )
+                )
+        self.__decoder.add(
+            tf.keras.layers.Dense(
+                self.__length * self.__width * self.__channels,
+                activation=self.__decoder_output_activation,
+            )
+        )
+
+        loss_selector = LossFunctionSelector()
+        self.__loss_function = loss_selector.select("DKL_MSE")
 
     @tf.function
     @tf.autograph.experimental.do_not_convert
     def __train_step(self, x: tf.Tensor) -> float:
         with tf.GradientTape() as tape:
-            # loss: float = self.__loss_function(self, x)
-            loss = self.___loss(x)
+            means: tf.Tensor
+            logvars: tf.Tensor
+            means, logvars = self.__encode(x)
+            z: tf.Tensor = self.__reparameterize(means, logvars)
+            x_generated: tf.Tensor = self.__decode(z)
+
+            loss: float = self.__loss_function(z, means, logvars, x, x_generated)
+
             gradients = tape.gradient(loss, self.trainable_variables)
             self.__optimizer.apply_gradients(zip(gradients, self.trainable_variables))
             return loss
@@ -215,7 +265,7 @@ class VAE(VAEModel):
 
     def __reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
         return self.__epsilon * tf.exp(logvars * 0.5) + means
-        # TODO does the sqrt of logvar make sense?
+        # TODO does the e^(logvars*0.5) make sense?
 
     def __encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         x_resized: tf.Tensor = x.reshape(
@@ -242,16 +292,15 @@ class VAE(VAEModel):
 
         return x_generated
 
-    def save_model(self, path: Optional[str], name: Optional[str]) -> None:
-        pass
-
     def __do_checks_for_init(
         self,
         architecture_encoder: List[int],
         architecture_decoder: List[int],
-        learning: float = 0.0001,
-        n_distributions: int = 5,
-        max_iter: int = 1000,
+        encoder_activations: Optional[List[Union[str, Callable, None]]],
+        decoder_activations: Optional[List[Union[str, Callable, None]]],
+        learning: float,
+        n_distributions: int,
+        max_iter: int,
     ) -> None:
         if learning <= 0:
             raise IllegalValueException(
@@ -298,11 +347,25 @@ class VAE(VAEModel):
                 f"The first layer of the decoder cannot be lower than {n_distributions}"
             )
 
+        if encoder_activations is not None and (
+            len(encoder_activations) != len(architecture_encoder)
+        ):
+            raise IllegalArchitectureException(
+                f"The number of encoder activation functions must be the same as the number of encoding layers"
+            )
+
+        if decoder_activations is not None and (
+            len(decoder_activations) != len(architecture_decoder)
+        ):
+            raise IllegalArchitectureException(
+                f"The number of decoder activation functions must be the same as the number of decoding layers"
+            )
+
     def __do_checks_for_image_shape(
         self,
-        image_length: int = 28,
-        image_width: int = 28,
-        n_channels: int = 1,
+        image_length,
+        image_width,
+        n_channels,
     ) -> None:
         if image_length <= 0:
             raise IllegalValueException(
@@ -320,29 +383,3 @@ class VAE(VAEModel):
                 + "It usually is 1 if there is just one channel, 3 if the image follows the "
                 + "standarized RGB structure or 4 if a channel is added for opacity"
             )
-
-    def ___log_normal_pdf(
-        self, sample, mean, logvar, raxis=1
-    ):  # DKL una manera de implementarlo
-        log2pi = tf.math.log(2.0 * np.pi)
-        return tf.reduce_sum(
-            -0.5 * ((sample - mean) ** 2.0 * tf.exp(-logvar) + logvar + log2pi),
-            axis=raxis,
-        )
-
-    def ___loss(self, x):
-        mean, logvar = self.__encode(x)
-        z = self.__reparameterize(mean, logvar)
-        x_logit = self.__decode(z)
-        # cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(logits=x_logit, labels=x)  # Función de coste entrada-salida
-        cross_ent = tf.keras.losses.mean_squared_error(
-            x, x_logit
-        )  # TODO no es cross ent
-        cross_ent = tf.reduce_sum(cross_ent, axis=[1, 2])
-        logpz = self.___log_normal_pdf(z, 0.0, 0.0)  # DKL normal
-        logqz_x = self.___log_normal_pdf(
-            z, mean, logvar
-        )  # Tercer cálculo ¿quitar igual?
-        return -tf.reduce_mean(
-            -cross_ent + logpz - logqz_x
-        )  # Hacer un modelo resistente a epsilon?

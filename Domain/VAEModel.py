@@ -41,10 +41,6 @@ class VAEModel(ABC, tf.keras.Model):
     def encode_and_decode(self, x: tf.Tensor) -> tf.Tensor:
         pass
 
-    @abstractmethod
-    def save_model(self, path: Optional[str], name: Optional[str]) -> None:
-        pass
-
     def __get_image_path(self, saving_path: Optional[str], name: Optional[str]) -> str:
         path: str
         if saving_path is None:
@@ -68,7 +64,7 @@ class VAEModel(ABC, tf.keras.Model):
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
-        save: bool = True
+        save: bool = True,
     ) -> None:
         np_images: ndarray = images.numpy()
         path: str = self.__get_image_path(saving_path, name)
@@ -89,7 +85,7 @@ class VAEModel(ABC, tf.keras.Model):
             plt.show()
 
     def __create_figures(
-        self, generated_images: ndarray, path: str, image_type: str, save:bool
+        self, generated_images: ndarray, path: str, image_type: str, save: bool
     ) -> None:
         for i in range(len(generated_images)):
             image: ndarray = generated_images[i]
@@ -107,7 +103,7 @@ class VAEModel(ABC, tf.keras.Model):
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
-        save: bool = True
+        save: bool = True,
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
         generated_images: ndarray = self.generate_with_random_sample(n_images).numpy()
@@ -120,7 +116,7 @@ class VAEModel(ABC, tf.keras.Model):
         saving_path: Optional[str] = None,
         name: Optional[str] = None,
         image_type: str = "png",
-        save: bool = True
+        save: bool = True,
     ) -> None:
         path: str = self.__get_image_path(saving_path, name)
         generated_images: ndarray = self.generate_with_multiple_samples(samples).numpy()
