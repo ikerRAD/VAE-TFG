@@ -6,6 +6,7 @@ from Domain.Exceptions.illegal_architecture_exception import (
 )
 from Domain.Exceptions.illegal_value_exception import IllegalValueException
 from Utils.batch_calculators import Batch
+from Utils.epsilon_generator import EpsilonGenerator
 
 """
 Interface for all the VAE and CVAE implementations. The interface follows the a
@@ -25,8 +26,6 @@ class VAEModel(ABC, tf.keras.Model):
         super().__init__(*args, **kwargs)
         self.__do_hyperparam_checks(learning_rate, n_distributions, max_iter)
 
-        self._epsilon: Optional[tf.Tensor] = None
-
         self._latent: int = n_distributions
         self._learning_rate: float = learning_rate
         self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
@@ -36,6 +35,7 @@ class VAEModel(ABC, tf.keras.Model):
     def fit_dataset(
         self,
         return_loss: bool = False,
+        epsilon_generator: Union[str, EpsilonGenerator] = "always_same_epsilon",
         batch_size: int = 100,
         batch_type: Optional[Union[str, Batch]] = None,
         generate_samples: bool = True,
@@ -47,8 +47,9 @@ class VAEModel(ABC, tf.keras.Model):
     def _encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         pass
 
+    @abstractmethod
     def _reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
-        return self._epsilon * tf.exp(logvars * tf.constant(0.5)) + means
+        pass
 
     @abstractmethod
     def _decode(self, z: tf.Tensor) -> tf.Tensor:

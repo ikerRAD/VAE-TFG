@@ -16,6 +16,8 @@ from Utils.batch_calculators import (
     RandomBatch,
     RandomStrictBatch,
 )
+from Utils.epsilon_generator import EpsilonGenerator, AlwaysSameEpsilonGenerator, AlwaysSameEpsilonSetGenerator, \
+    SameEpsilonGenerator, SameEpsilonSetGenerator, OnlyOneEachTimeEpsilonGenerator, AllRandomEachTimeEpsilonGenerator
 from Utils.images.image_loss_function_selector import ImageLossFunctionSelector
 
 
@@ -82,40 +84,34 @@ class ImageVAE(VAEModel):
         self._encoder = tf.keras.Sequential()
         self._decoder = tf.keras.Sequential()
 
+        self._epsilon: Optional[EpsilonGenerator] = None
+
         loss_selector = ImageLossFunctionSelector()
         self._loss_function = loss_selector.select("DKL_MSE")
 
     def fit_dataset(
         self,
         return_loss: bool = False,
+        epsilon_generator: Union[str, EpsilonGenerator] = "always_same_epsilon",
         batch_size: int = 100,
         batch_type: Optional[Union[str, Batch]] = None,
         generate_samples: bool = True,
         sample_frequency: int = 10,
     ) -> Optional[List[float]]:
         loss_values: List[float]
+
+        self._epsilon = self.__get_epsilon_generator(epsilon_generator)
+
         if batch_type is None:
-            self._epsilon = tf.random.normal(
-                shape=(self._train_images.shape[0], self._latent)
-            )
+            self._epsilon.set_up(self._train_images.shape[0], self._latent)
+
             loss_values = self._iterate_without_batch(
                 self._train_images, generate_samples, sample_frequency
             )
         else:
-            self._epsilon = tf.random.normal(shape=(batch_size, self._latent))
-            the_batch: Batch
-            if batch_type == "common":
-                the_batch = CommonBatch()
-            elif batch_type == "strict":
-                the_batch = StrictBatch()
-            elif batch_type == "cyclic":
-                the_batch = CyclicBatch()
-            elif batch_type == "random":
-                the_batch = RandomBatch()
-            elif batch_type == "random_strict":
-                the_batch = RandomStrictBatch()
-            else:
-                the_batch = batch_type
+            self._epsilon.set_up(batch_size, self._latent)
+
+            the_batch: Batch = self.__get_batch(batch_type)
 
             the_batch.set_up(self._train_images, batch_size)
             loss_values = self._iterate_with_batch(
@@ -135,7 +131,7 @@ class ImageVAE(VAEModel):
         return means, logvars
 
     def _reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
-        return self._epsilon * tf.exp(logvars * tf.constant(0.5)) + means
+        return self._epsilon.get() * tf.exp(logvars * tf.constant(0.5)) + means
 
     def _decode(self, z: tf.Tensor) -> tf.Tensor:
         images_resized: tf.Tensor = self._decoder(z).reshape(
@@ -371,3 +367,35 @@ class ImageVAE(VAEModel):
                 + "It usually is 1 if there is just one channel, 3 if the image follows the "
                 + "standarized RGB structure or 4 if a channel is added for opacity"
             )
+
+    @staticmethod
+    def __get_epsilon_generator(epsilon_generator: Union[str, EpsilonGenerator]) -> EpsilonGenerator:
+        if epsilon_generator == "always_same_epsilon":
+            return AlwaysSameEpsilonGenerator()
+        elif epsilon_generator == "always_same_epsilon_set":
+            return AlwaysSameEpsilonSetGenerator()
+        elif epsilon_generator == "same_epsilon":
+            return SameEpsilonGenerator()
+        elif epsilon_generator == "same_epsilon_set":
+            return SameEpsilonSetGenerator()
+        elif epsilon_generator == "only_one_each_time":
+            return OnlyOneEachTimeEpsilonGenerator()
+        elif epsilon_generator == "all_random_each_time":
+            return AllRandomEachTimeEpsilonGenerator()
+        else:
+            return epsilon_generator
+
+    @staticmethod
+    def __get_batch(batch_type: Union[str, Batch]) -> Batch:
+        if batch_type == "common":
+            return CommonBatch()
+        elif batch_type == "strict":
+            return StrictBatch()
+        elif batch_type == "cyclic":
+            return CyclicBatch()
+        elif batch_type == "random":
+            return RandomBatch()
+        elif batch_type == "random_strict":
+            return RandomStrictBatch()
+        else:
+            return batch_type
