@@ -1,9 +1,10 @@
 from abc import abstractmethod, ABC
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 import tensorflow as tf
-import matplotlib.pyplot as plt
-from numpy import ndarray
-
+from Domain.Exceptions.illegal_architecture_exception import (
+    IllegalArchitectureException,
+)
+from Domain.Exceptions.illegal_value_exception import IllegalValueException
 from Utils.batch_calculators import Batch
 
 """
@@ -13,112 +14,119 @@ sklearn-like structure.
 
 
 class VAEModel(ABC, tf.keras.Model):
+    def __init__(
+        self,
+        learning_rate: float = 0.0001,
+        n_distributions: int = 5,
+        max_iter: int = 1000,
+        *args,
+        **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.__do_hyperparam_checks(learning_rate, n_distributions, max_iter)
+
+        self._epsilon: Optional[tf.Tensor] = None
+
+        self._latent: int = n_distributions
+        self._learning_rate: float = learning_rate
+        self._optimizer = tf.keras.optimizers.Adam(self._learning_rate)
+        self._iterations: int = max_iter
+
     @abstractmethod
     def fit_dataset(
         self,
         return_loss: bool = False,
         batch_size: int = 100,
         batch_type: Optional[Union[str, Batch]] = None,
-        generate_images: bool = True,
+        generate_samples: bool = True,
     ) -> Optional[List[float]]:
         pass
 
     @abstractmethod
-    def generate_with_random_sample(self, n_samples: int = 1) -> tf.Tensor:
+    def _encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         pass
 
-    @abstractmethod
-    def generate_with_one_sample(
-        self, sample: List[float], n_samples: int = 1
-    ) -> tf.Tensor:
-        pass
+    def _reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
+        return self._epsilon * tf.exp(logvars * tf.constant(0.5)) + means
 
     @abstractmethod
-    def generate_with_multiple_samples(self, samples: tf.Tensor) -> tf.Tensor:
+    def _decode(self, z: tf.Tensor) -> tf.Tensor:
         pass
 
     @abstractmethod
     def encode_and_decode(self, x: tf.Tensor) -> tf.Tensor:
         pass
 
-    def __get_image_path(self, saving_path: Optional[str], name: Optional[str]) -> str:
-        path: str
-        if saving_path is None:
-            path = ""
-        else:
-            if saving_path[-1] != "/":
-                path = saving_path + "/"
-            else:
-                path = saving_path
-
-        if name is None:
-            path = path + "unnamed"
-        else:
-            path = path + name
-
-        return path
-
-    def encode_decode_images(
+    @abstractmethod
+    def change_dataset(
         self,
-        images: tf.Tensor,
-        saving_path: Optional[str] = None,
-        name: Optional[str] = None,
-        image_type: str = "png",
-        save: bool = True,
+        dataset: tf.Tensor,
+        normalize_data: bool = True,
+        discretize_data: bool = False,
     ) -> None:
-        np_images: ndarray = images.numpy()
-        path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.encode_and_decode(images).numpy()
+        pass
 
-        for i in range(len(images)):
-            image: ndarray = np_images[i]
-            image_generated: ndarray = generated_images[i]
-            plt.figure()
-            plt.subplot(1, 2, 1)
-            plt.imshow(image, cmap="gray")
-            plt.axis("off")
-            plt.subplot(1, 2, 2)
-            plt.imshow(image_generated[0, :, :, :])
-            plt.axis("off")
-            if save:
-                plt.savefig(f"{path}_{i + 1}.{image_type}")
-            plt.show()
-
-    def __create_figures(
-        self, generated_images: ndarray, path: str, image_type: str, save: bool
-    ) -> None:
-        for i in range(len(generated_images)):
-            image: ndarray = generated_images[i]
-            plt.figure()
-            plt.plot()
-            plt.imshow(image, cmap="gray")
-            plt.axis("off")
-            if save:
-                plt.savefig(f"{path}_{i + 1}.{image_type}")
-            plt.show()
-
-    def generate_random_images(
+    @abstractmethod
+    def add_train_instances(
         self,
-        n_images: int = 1,
-        saving_path: Optional[str] = None,
-        name: Optional[str] = None,
-        image_type: str = "png",
-        save: bool = True,
+        instances: tf.Tensor,
+        normalize_data: bool = True,
+        discretize_data: bool = False,
+        shuffle_data: bool = False
     ) -> None:
-        path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.generate_with_random_sample(n_images).numpy()
+        pass
 
-        self.__create_figures(generated_images, path, image_type, save)
+    def get_learning_rate(self) -> float:
+        return self._learning_rate
 
-    def generate_images_with_samples(
-        self,
-        samples: tf.Tensor,
-        saving_path: Optional[str] = None,
-        name: Optional[str] = None,
-        image_type: str = "png",
-        save: bool = True,
+    def get_latent_space(self) -> int:
+        return self._latent
+
+    def get_max_iterations(self) -> int:
+        return self._iterations
+
+    def set_max_iterations(self, max_iter: int) -> None:
+        if max_iter <= 0:
+            raise IllegalValueException(
+                "The maximum number of iterations cannot be less than or equal to zero."
+            )
+        self._iterations = max_iter
+
+    def _random_sample(self, n_samples: int = 1) -> tf.Tensor:
+        return tf.random.normal(shape=(n_samples, self._latent))
+
+    def generate_with_random_sample(self, n_samples: int = 1) -> tf.Tensor:
+        sample: tf.Tensor = self._random_sample(n_samples)
+        return self._decode(sample)
+
+    def generate_with_one_sample(
+        self, sample: List[float], n_samples: int = 1
+    ) -> tf.Tensor:
+        samples: tf.Tensor = tf.convert_to_tensor(
+            [sample for _ in range(n_samples)], tf.float32
+        )
+        return self._decode(samples)
+
+    def generate_with_multiple_samples(self, samples: tf.Tensor) -> tf.Tensor:
+        return self._decode(samples)
+
+    @staticmethod
+    def __do_hyperparam_checks(
+        learning_rate: float,
+        n_distributions: int,
+        max_iter: int,
     ) -> None:
-        path: str = self.__get_image_path(saving_path, name)
-        generated_images: ndarray = self.generate_with_multiple_samples(samples).numpy()
+        if learning_rate <= 0:
+            raise IllegalValueException(
+                "The 'learning rate' parameter cannot be less than or equal to zero."
+            )
 
-        self.__create_figures(generated_images, path, image_type, save)
+        if max_iter <= 0:
+            raise IllegalValueException(
+                "The maximum number of iterations cannot be less than or equal to zero."
+            )
+
+        if n_distributions <= 0:
+            raise IllegalArchitectureException(
+                "The number of distributions cannot be less than or equal to zero."
+            )

@@ -3,7 +3,7 @@ from typing import Callable, List
 import numpy as np
 
 
-class LossFunctionSelector:
+class ImageLossFunctionSelector:
     @staticmethod
     def possible_loss_functions() -> List[str]:
         return ["DKL_MSE"]
