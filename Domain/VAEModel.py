@@ -39,6 +39,7 @@ class VAEModel(ABC, tf.keras.Model):
         batch_size: int = 100,
         batch_type: Optional[Union[str, Batch]] = None,
         generate_samples: bool = True,
+        sample_frequency: int = 10,
     ) -> Optional[List[float]]:
         pass
 
@@ -72,7 +73,7 @@ class VAEModel(ABC, tf.keras.Model):
         instances: tf.Tensor,
         normalize_data: bool = True,
         discretize_data: bool = False,
-        shuffle_data: bool = False
+        shuffle_data: bool = False,
     ) -> None:
         pass
 

@@ -19,7 +19,7 @@ from Utils.batch_calculators import (
 from Utils.images.image_loss_function_selector import ImageLossFunctionSelector
 
 
-class ImageVAE(ABC, VAEModel):
+class ImageVAE(VAEModel):
     def __init__(
         self,
         dataset: Optional[List[int]] = None,
@@ -91,6 +91,7 @@ class ImageVAE(ABC, VAEModel):
         batch_size: int = 100,
         batch_type: Optional[Union[str, Batch]] = None,
         generate_samples: bool = True,
+        sample_frequency: int = 10,
     ) -> Optional[List[float]]:
         loss_values: List[float]
         if batch_type is None:
@@ -98,7 +99,7 @@ class ImageVAE(ABC, VAEModel):
                 shape=(self._train_images.shape[0], self._latent)
             )
             loss_values = self._iterate_without_batch(
-                self._train_images, generate_samples
+                self._train_images, generate_samples, sample_frequency
             )
         else:
             self._epsilon = tf.random.normal(shape=(batch_size, self._latent))
@@ -117,7 +118,9 @@ class ImageVAE(ABC, VAEModel):
                 the_batch = batch_type
 
             the_batch.set_up(self._train_images, batch_size)
-            loss_values = self._iterate_with_batch(the_batch, generate_samples)
+            loss_values = self._iterate_with_batch(
+                the_batch, generate_samples, sample_frequency
+            )
 
         if return_loss:
             return loss_values
@@ -167,14 +170,18 @@ class ImageVAE(ABC, VAEModel):
             return loss
 
     def _iterate_without_batch(
-        self, train_images: tf.Tensor, generate_images
+        self,
+        train_images: tf.Tensor,
+        generate_images: bool,
+        sample_frequency: int,
     ) -> List[float]:
         loss_values: List[float] = []
 
         for iteration in range(1, self._iterations + 1):
             print(f"Iteration number {iteration}")
             if generate_images:
-                self.generate_random_images(save=False)
+                if iteration % sample_frequency == 0:
+                    self.generate_random_images(save=False)
 
             partial_loss: List[float] = [self._train_step(train_images)]
 
@@ -182,7 +189,12 @@ class ImageVAE(ABC, VAEModel):
 
         return loss_values
 
-    def _iterate_with_batch(self, the_batch: Batch, generate_images) -> List[float]:
+    def _iterate_with_batch(
+        self,
+        the_batch: Batch,
+        generate_images: bool,
+        sample_frequency: int,
+    ) -> List[float]:
         loss_values: List[float] = []
         train_images: tf.Tensor
 
@@ -190,7 +202,8 @@ class ImageVAE(ABC, VAEModel):
             for iteration in range(1, self._iterations + 1):
                 print(f"Iteration number {iteration}")
                 if generate_images:
-                    self.generate_random_images(save=False)
+                    if iteration % sample_frequency == 0:
+                        self.generate_random_images(save=False)
 
                 train_images = the_batch.next()
                 partial_loss: List[float] = [self._train_step(train_images)]
@@ -232,7 +245,7 @@ class ImageVAE(ABC, VAEModel):
         instances: tf.Tensor,
         normalize_data: bool = True,
         discretize_data: bool = False,
-        shuffle_data: bool = False
+        shuffle_data: bool = False,
     ) -> None:
         train_images = tf.convert_to_tensor(instances, dtype=tf.float32)
 
