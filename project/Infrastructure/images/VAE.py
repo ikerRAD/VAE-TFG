@@ -71,7 +71,11 @@ class VAE(ImageVAE):
             str, Callable, None
         ] = decoder_output_activation
 
-        self._encoder.add(tf.keras.layers.InputLayer(input_shape=(self._length, self._width, self._channels)))
+        self._encoder.add(
+            tf.keras.layers.InputLayer(
+                input_shape=(self._length, self._width, self._channels)
+            )
+        )
         self._encoder.add(tf.keras.layers.Flatten())
 
         n_neurons: int
