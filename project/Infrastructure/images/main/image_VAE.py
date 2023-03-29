@@ -1,24 +1,18 @@
-from abc import ABC
 from typing import Optional, List, Union, Tuple
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from numpy import ndarray
 
-from Domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
-from Domain.Exceptions.illegal_value_exception import IllegalValueException
-from Domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
-from Domain.VAEModel import VAEModel
-from Utils.batch_calculators import (
+from project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
+from project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
+from project.domain.VAEModel import VAEModel
+from utils.batches import (
     Batch,
-    CommonBatch,
-    StrictBatch,
-    CyclicBatch,
-    RandomBatch,
-    RandomStrictBatch,
+    BatchSelector,
 )
-from Utils.epsilon_generator import EpsilonGenerator, AlwaysSameEpsilonGenerator, AlwaysSameEpsilonSetGenerator, \
-    SameEpsilonGenerator, SameEpsilonSetGenerator, OnlyOneEachTimeEpsilonGenerator, AllRandomEachTimeEpsilonGenerator
-from Utils.images.image_loss_function_selector import ImageLossFunctionSelector
+from utils.epsilons import EpsilonGenerator, EpsilonSelector
+from utils.images.application.image_loss_function_selector import ImageLossFunctionSelector
 
 
 class ImageVAE(VAEModel):
@@ -100,7 +94,7 @@ class ImageVAE(VAEModel):
     ) -> Optional[List[float]]:
         loss_values: List[float]
 
-        self._epsilon = self.__get_epsilon_generator(epsilon_generator)
+        self._epsilon = EpsilonSelector.select(epsilon_generator)
 
         if batch_type is None:
             self._epsilon.set_up(self._train_images.shape[0], self._latent)
@@ -111,7 +105,7 @@ class ImageVAE(VAEModel):
         else:
             self._epsilon.set_up(batch_size, self._latent)
 
-            the_batch: Batch = self.__get_batch(batch_type)
+            the_batch: Batch = BatchSelector.select(batch_type)
 
             the_batch.set_up(self._train_images, batch_size)
             loss_values = self._iterate_with_batch(
@@ -122,11 +116,8 @@ class ImageVAE(VAEModel):
             return loss_values
 
     def _encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        x_resized: tf.Tensor = x.reshape(
-            (x.shape[0], self._length * self._width * self._channels)
-        )
         means, logvars = tf.split(
-            self._encoder(x_resized), num_or_size_splits=2, axis=1
+            self._encoder(x), num_or_size_splits=2, axis=1
         )
         return means, logvars
 
@@ -368,34 +359,3 @@ class ImageVAE(VAEModel):
                 + "standarized RGB structure or 4 if a channel is added for opacity"
             )
 
-    @staticmethod
-    def __get_epsilon_generator(epsilon_generator: Union[str, EpsilonGenerator]) -> EpsilonGenerator:
-        if epsilon_generator == "always_same_epsilon":
-            return AlwaysSameEpsilonGenerator()
-        elif epsilon_generator == "always_same_epsilon_set":
-            return AlwaysSameEpsilonSetGenerator()
-        elif epsilon_generator == "same_epsilon":
-            return SameEpsilonGenerator()
-        elif epsilon_generator == "same_epsilon_set":
-            return SameEpsilonSetGenerator()
-        elif epsilon_generator == "only_one_each_time":
-            return OnlyOneEachTimeEpsilonGenerator()
-        elif epsilon_generator == "all_random_each_time":
-            return AllRandomEachTimeEpsilonGenerator()
-        else:
-            return epsilon_generator
-
-    @staticmethod
-    def __get_batch(batch_type: Union[str, Batch]) -> Batch:
-        if batch_type == "common":
-            return CommonBatch()
-        elif batch_type == "strict":
-            return StrictBatch()
-        elif batch_type == "cyclic":
-            return CyclicBatch()
-        elif batch_type == "random":
-            return RandomBatch()
-        elif batch_type == "random_strict":
-            return RandomStrictBatch()
-        else:
-            return batch_type

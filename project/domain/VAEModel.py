@@ -1,12 +1,12 @@
 from abc import abstractmethod, ABC
 from typing import Optional, Union, List, Tuple
 import tensorflow as tf
-from Domain.Exceptions.illegal_architecture_exception import (
+from project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from Domain.Exceptions.illegal_value_exception import IllegalValueException
-from Utils.batch_calculators import Batch
-from Utils.epsilon_generator import EpsilonGenerator
+from project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from utils.batches import Batch
+from utils.epsilons import EpsilonGenerator
 
 """
 Interface for all the VAE and CVAE implementations. The interface follows the a

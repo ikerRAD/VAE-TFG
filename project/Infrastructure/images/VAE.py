@@ -1,10 +1,10 @@
 from typing import List, Optional, Union, Callable
 import tensorflow as tf
 import numpy as np
-from Domain.Exceptions.illegal_architecture_exception import (
+from project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from Infrastructure.images.main.image_VAE import ImageVAE
+from infrastructure.images.main.image_VAE import ImageVAE
 from tensorflow.python.ops.numpy_ops import np_config
 
 np_config.enable_numpy_behavior()
@@ -17,8 +17,8 @@ Implementation of the most common version of the VAE.
 class VAE(ImageVAE):
     def __init__(
         self,
-        architecture_encoder: List[int],
-        architecture_decoder: List[int],
+        encoder_architecture: List[int],
+        decoder_architecture: List[int],
         encoder_activations: Optional[List[Union[str, Callable, None]]] = None,
         decoder_activations: Optional[List[Union[str, Callable, None]]] = None,
         encoder_output_activation: Union[str, Callable, None] = None,
@@ -50,14 +50,14 @@ class VAE(ImageVAE):
         )
 
         self.__do_checks_for_init(
-            architecture_encoder,
-            architecture_decoder,
+            encoder_architecture,
+            decoder_architecture,
             encoder_activations,
             decoder_activations,
         )
 
-        self._encoder_architecture: List[int] = architecture_encoder
-        self._decoder_architecture: List[int] = architecture_decoder
+        self._encoder_architecture: List[int] = encoder_architecture
+        self._decoder_architecture: List[int] = decoder_architecture
         self._encoder_activations: Optional[
             List[Union[str, Callable, None]]
         ] = encoder_activations
@@ -70,6 +70,9 @@ class VAE(ImageVAE):
         self._decoder_output_activation: Union[
             str, Callable, None
         ] = decoder_output_activation
+
+        self._encoder.add(tf.keras.layers.InputLayer(input_shape=(self._length, self._width, self._channels)))
+        self._encoder.add(tf.keras.layers.Flatten())
 
         n_neurons: int
         for i in range(len(self._encoder_architecture)):
@@ -129,50 +132,50 @@ class VAE(ImageVAE):
 
     def __do_checks_for_init(
         self,
-        architecture_encoder: List[int],
-        architecture_decoder: List[int],
+        encoder_architecture: List[int],
+        decoder_architecture: List[int],
         encoder_activations: Optional[List[Union[str, Callable, None]]],
         decoder_activations: Optional[List[Union[str, Callable, None]]],
     ) -> None:
-        if np.any(np.array(architecture_encoder) <= 0):
+        if np.any(np.array(encoder_architecture) <= 0):
             raise IllegalArchitectureException(
                 "The architecture of the encoder cannot have layers with values lower than 1"
             )
 
-        if np.any(np.array(architecture_decoder) <= 0):
+        if np.any(np.array(decoder_architecture) <= 0):
             raise IllegalArchitectureException(
                 "The architecture of the decoder cannot have layers with values lower than 1"
             )
 
-        if len(architecture_encoder) == 0:
+        if len(encoder_architecture) == 0:
             raise IllegalArchitectureException(
                 "The architecture of the encoder cannot be empty"
             )
 
-        if len(architecture_decoder) == 0:
+        if len(decoder_architecture) == 0:
             raise IllegalArchitectureException(
                 "The architecture of the decoder cannot be empty"
             )
 
-        if architecture_encoder[-1] < self._latent * 2:
+        if encoder_architecture[-1] < self._latent * 2:
             raise IllegalArchitectureException(
                 f"The last layer of the encoder cannot be lower than {self._latent * 2}"
             )
 
-        if architecture_decoder[0] < self._latent:
+        if decoder_architecture[0] < self._latent:
             raise IllegalArchitectureException(
                 f"The first layer of the decoder cannot be lower than {self._latent}"
             )
 
         if encoder_activations is not None and (
-            len(encoder_activations) != len(architecture_encoder)
+            len(encoder_activations) != len(encoder_architecture)
         ):
             raise IllegalArchitectureException(
                 f"The number of encoder activation functions must be the same as the number of encoding layers"
             )
 
         if decoder_activations is not None and (
-            len(decoder_activations) != len(architecture_decoder)
+            len(decoder_activations) != len(decoder_architecture)
         ):
             raise IllegalArchitectureException(
                 f"The number of decoder activation functions must be the same as the number of decoding layers"
