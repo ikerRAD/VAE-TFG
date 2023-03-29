@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List
 
 from utils.batches.infrastructure.random_strict_batch import RandomStrictBatch
 from utils.batches.infrastructure.random_batch import RandomBatch
@@ -14,7 +14,17 @@ Class for selecting a batch given the batch itself or an identification string.
 
 class BatchSelector:
     @staticmethod
-    def get_batch(batch_type: Union[str, Batch]) -> Batch:
+    def possible_keys() -> List[str]:
+        return [
+            "common",
+            "strict",
+            "cyclic",
+            "random",
+            "random_strict",
+        ]
+
+    @staticmethod
+    def select(batch_type: Union[str, Batch]) -> Batch:
         if batch_type == "common":
             return CommonBatch()
         elif batch_type == "strict":

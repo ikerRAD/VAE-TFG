@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Tuple
+from typing import Optional, List, Union, Tuple, Dict
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from numpy import ndarray
@@ -7,12 +7,16 @@ from project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetEx
 from project.domain.Exceptions.illegal_value_exception import IllegalValueException
 from project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
 from project.domain.VAEModel import VAEModel
-from utils.batches import (
-    Batch,
-    BatchSelector,
+from utils.batches.application.batch_selector import BatchSelector
+from utils.batches.domain.batch import Batch
+from utils.epsilons.application.epsilon_generator_selector import (
+    EpsilonGeneratorSelector,
 )
-from utils.epsilons import EpsilonGenerator, EpsilonSelector
-from utils.images.application.image_loss_function_selector import ImageLossFunctionSelector
+from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+
+from utils.images.application.image_loss_function_selector import (
+    ImageLossFunctionSelector,
+)
 
 
 class ImageVAE(VAEModel):
@@ -81,20 +85,22 @@ class ImageVAE(VAEModel):
         self._epsilon: Optional[EpsilonGenerator] = None
 
         loss_selector = ImageLossFunctionSelector()
-        self._loss_function = loss_selector.select("DKL_MSE")
+        self._loss_function = loss_selector.select(loss_selector.possible_keys()[0])
 
     def fit_dataset(
         self,
         return_loss: bool = False,
-        epsilon_generator: Union[str, EpsilonGenerator] = "always_same_epsilon",
+        epsilon_generator: Union[
+            str, EpsilonGenerator
+        ] = EpsilonGeneratorSelector.possible_keys()[0],
         batch_size: int = 100,
-        batch_type: Optional[Union[str, Batch]] = None,
+        batch_type: Optional[Union[str, Batch]] = BatchSelector.possible_keys()[0],
         generate_samples: bool = True,
         sample_frequency: int = 10,
     ) -> Optional[List[float]]:
         loss_values: List[float]
 
-        self._epsilon = EpsilonSelector.select(epsilon_generator)
+        self._epsilon = EpsilonGeneratorSelector.select(epsilon_generator)
 
         if batch_type is None:
             self._epsilon.set_up(self._train_images.shape[0], self._latent)
@@ -116,9 +122,7 @@ class ImageVAE(VAEModel):
             return loss_values
 
     def _encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
-        means, logvars = tf.split(
-            self._encoder(x), num_or_size_splits=2, axis=1
-        )
+        means, logvars = tf.split(self._encoder(x), num_or_size_splits=2, axis=1)
         return means, logvars
 
     def _reparameterize(self, means: tf.Tensor, logvars: tf.Tensor) -> tf.Tensor:
@@ -150,7 +154,9 @@ class ImageVAE(VAEModel):
             z: tf.Tensor = self._reparameterize(means, logvars)
             x_generated: tf.Tensor = self._decode(z)
 
-            loss: float = self._loss_function(z, means, logvars, x, x_generated)
+            loss: float
+            loss_summary: Dict[str, float]
+            loss, loss_summary = self._loss_function(z, means, logvars, x, x_generated)
 
             gradients = tape.gradient(loss, self.trainable_variables)
             self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
@@ -214,7 +220,8 @@ class ImageVAE(VAEModel):
 
         if train_images.shape[1:] != self.get_image_shape():
             raise IllegalDatasetException(
-                f"The given data has the shape {tuple(train_images.shape[1:])}, and it should be {self.get_image_shape()}"
+                f"The given data has the shape {tuple(train_images.shape[1:])},"
+                f" and it should be {self.get_image_shape()}"
             )
 
         normalizer: float = 1.0
@@ -238,7 +245,8 @@ class ImageVAE(VAEModel):
 
         if train_images.shape[1:] != self.get_image_shape():
             raise IllegalDatasetException(
-                f"The given data has the shape {tuple(train_images.shape[1:])}, and it should be {self.get_image_shape()}"
+                f"The given data has the shape {tuple(train_images.shape[1:])},"
+                f" and it should be {self.get_image_shape()}"
             )
 
         self._train_images = tf.concat(
@@ -358,4 +366,3 @@ class ImageVAE(VAEModel):
                 + "It usually is 1 if there is just one channel, 3 if the image follows the "
                 + "standarized RGB structure or 4 if a channel is added for opacity"
             )
-
