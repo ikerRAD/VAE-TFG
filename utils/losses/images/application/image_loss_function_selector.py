@@ -18,11 +18,19 @@ def dkl_mse(
     x: tf.Tensor,
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
+    summary: Dict[str, float] = {}
+
     mse: tf.Tensor = tf.keras.losses.mean_squared_error(x, x_generated)
     mse = tf.reduce_sum(mse, axis=[1, 2])
+    summary["mse"] = tf.reduce_mean(mse)
+
     logpz = __log_normal_pdf(z, 0.0, 0.0)
+    summary["logpz"] = tf.reduce_mean(logpz)
+
     logqz_x = __log_normal_pdf(z, means, logvars)
-    return tf.reduce_mean(mse - logpz + logqz_x), {}
+    summary["logqz_x"] = tf.reduce_mean(logqz_x)
+
+    return tf.reduce_mean(mse - logpz + logqz_x), summary
 
 
 class ImageLossFunctionSelector:

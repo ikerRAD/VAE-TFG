@@ -14,7 +14,7 @@ from utils.epsilons.application.epsilon_generator_selector import (
 )
 from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
-from utils.images.application.image_loss_function_selector import (
+from utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
 )
 
