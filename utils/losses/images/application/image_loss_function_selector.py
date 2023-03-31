@@ -51,7 +51,7 @@ class ImageLossFunctionSelector:
         [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
         Tuple[float, Dict[str, float]],
     ]:
-        if function == "DKL_MSE":
+        if function == "dkl_mse":
             return dkl_mse
         else:
             return function

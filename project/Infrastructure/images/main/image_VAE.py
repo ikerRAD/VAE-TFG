@@ -2,6 +2,7 @@ from typing import Optional, List, Union, Tuple, Dict
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from numpy import ndarray
+from tensorflow.python.ops.numpy_ops import np_config
 
 from project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
 from project.domain.Exceptions.illegal_value_exception import IllegalValueException
@@ -18,15 +19,17 @@ from utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
 )
 
+np_config.enable_numpy_behavior()
+
 
 class ImageVAE(VAEModel):
     def __init__(
         self,
-        dataset: Optional[List[int]] = None,
+        dataset: Optional[List] = None,
         learning_rate: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
-        image_length: int = 28,
+        image_height: int = 28,
         image_width: int = 28,
         n_channels: int = 1,
         normalize_data: bool = True,
@@ -43,28 +46,28 @@ class ImageVAE(VAEModel):
         )
 
         self.__do_checks_for_image_shape(
-            image_length,
+            image_height,
             image_width,
             n_channels,
         )
 
-        self._length: int
+        self._height: int
         self._width: int
         self._channels: int
 
         if dataset is None:
             (train_images, _), (_, _) = tf.keras.datasets.mnist.load_data()
-            self._length = 28
+            self._height = 28
             self._width = 28
             self._channels = 1
         else:
             train_images = tf.convert_to_tensor(dataset, dtype=tf.float32)
-            self._length = image_length
+            self._height = image_height
             self._width = image_width
             self._channels = n_channels
 
         self._train_images = train_images.reshape(
-            (train_images.shape[0], self._length, self._width, self._channels)
+            (train_images.shape[0], self._height, self._width, self._channels)
         )
 
         normalizer: float = 1.0
@@ -84,8 +87,7 @@ class ImageVAE(VAEModel):
 
         self._epsilon: Optional[EpsilonGenerator] = None
 
-        loss_selector = ImageLossFunctionSelector()
-        self._loss_function = loss_selector.select(loss_selector.possible_keys()[0])
+        self._loss_function = ImageLossFunctionSelector.select(ImageLossFunctionSelector.possible_keys()[0])
 
     def fit_dataset(
         self,
@@ -130,7 +132,7 @@ class ImageVAE(VAEModel):
 
     def _decode(self, z: tf.Tensor) -> tf.Tensor:
         images_resized: tf.Tensor = self._decoder(z).reshape(
-            (z.shape[0], self._length, self._width, self._channels)
+            (z.shape[0], self._height, self._width, self._channels)
         )
         return images_resized
 
@@ -208,7 +210,7 @@ class ImageVAE(VAEModel):
         return loss_values
 
     def get_image_shape(self) -> Tuple[int, int, int]:
-        return self._length, self._width, self._channels
+        return self._height, self._width, self._channels
 
     def change_dataset(
         self,
@@ -346,13 +348,13 @@ class ImageVAE(VAEModel):
 
     @staticmethod
     def __do_checks_for_image_shape(
-        image_length,
+        image_height,
         image_width,
         n_channels,
     ) -> None:
-        if image_length <= 0:
+        if image_height <= 0:
             raise IllegalValueException(
-                "The 'image length' parameter cannot be less than or equal to zero."
+                "The 'image height' parameter cannot be less than or equal to zero."
             )
 
         if image_width <= 0:

@@ -2,11 +2,11 @@ from typing import List, Optional, Union, Callable, Tuple
 import tensorflow as tf
 import numpy as np
 
+from project.Infrastructure.images.main.image_VAE import ImageVAE
 from project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from infrastructure.images.main.image_VAE import ImageVAE
-
+from project.domain.Exceptions.illegal_value_exception import IllegalValueException
 
 """
 Implementation of the most common version of the CVAE.
@@ -28,11 +28,12 @@ class CVAE(ImageVAE):
         encoder_output_activation: Union[str, Callable, None] = None,
         decoder_input_activation: Union[str, Callable, None] = None,
         decoder_output_activation: Union[str, Callable, None] = None,
-        dataset: Optional[List[int]] = None,
+        decoder_output_size: int = 3,
+        dataset: Optional[List] = None,
         learning_rate: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
-        image_length: int = 28,
+        image_height: int = 28,
         image_width: int = 28,
         n_channels: int = 1,
         normalize_data: bool = True,
@@ -45,7 +46,7 @@ class CVAE(ImageVAE):
             learning_rate,
             n_distributions,
             max_iter,
-            image_length,
+            image_height,
             image_width,
             n_channels,
             normalize_data,
@@ -64,11 +65,18 @@ class CVAE(ImageVAE):
             decoder_input_reshape,
             encoder_activations,
             decoder_activations,
+            decoder_output_size,
         )
 
-        """ REVISAR """
-        self._encoder_architecture: List[int] = architecture_encoder
-        self._decoder_architecture: List[int] = architecture_decoder
+        self._encoder_architecture: List[Union[int, str]] = encoder_architecture
+        self._decoder_architecture: List[int] = decoder_architecture
+        self._encoder_sizes: List[int] = encoder_sizes
+        self._decoder_sizes: List[int] = decoder_sizes
+        self._encoder_strides: List[int] = encoder_strides
+        self._decoder_strides: List[int] = decoder_strides
+
+        self._decoder_input_reshape: Tuple[int, int, int] = decoder_input_reshape
+
         self._encoder_activations: Optional[
             List[Union[str, Callable, None]]
         ] = encoder_activations
@@ -78,44 +86,104 @@ class CVAE(ImageVAE):
         self._encoder_output_activation: Union[
             str, Callable, None
         ] = encoder_output_activation
+        self._decoder_input_activation: Union[
+            str, Callable, None
+        ] = decoder_input_activation
         self._decoder_output_activation: Union[
             str, Callable, None
         ] = decoder_output_activation
+        self._decoder_output_size: int = decoder_output_size
 
-        n_neurons: int
+        self._encoder.add(
+            tf.keras.layers.InputLayer(
+                input_shape=(self._height, self._width, self._channels)
+            )
+        )
+        filter_or_pooling: Union[int, str]
         for i in range(len(self._encoder_architecture)):
-            n_neurons = self._encoder_architecture[i]
-            if self._encoder_activations is None:
-                self._encoder.add(tf.keras.layers.Dense(n_neurons))
-            else:
-                self._encoder.add(
-                    tf.keras.layers.Dense(
-                        n_neurons, activation=self._encoder_activations[i]
+            filter_or_pooling = self._encoder_architecture[i]
+            if type(filter_or_pooling) is str:
+                is_max_pool: bool = filter_or_pooling != "max_pool"
+                is_average_pool: bool = filter_or_pooling != "average_pool"
+                if is_max_pool:
+                    self._encoder.add(
+                        tf.keras.layers.MaxPooling2D(
+                            pool_size=self._encoder_sizes[i],
+                            strides=self._encoder_strides[i],
+                        )
                     )
-                )
+                elif is_average_pool:
+                    self._encoder.add(
+                        tf.keras.layers.AveragePooling2D(
+                            pool_size=self._encoder_sizes[i],
+                            strides=self._encoder_strides[i],
+                        )
+                    )
+            elif type(filter_or_pooling) is int:
+                if self._encoder_activations is None:
+                    self._encoder.add(
+                        tf.keras.layers.Conv2D(
+                            filters=filter_or_pooling,
+                            kernel_size=self._encoder_sizes[i],
+                            strides=self._encoder_strides[i],
+                        )
+                    )
+                else:
+                    self._encoder.add(
+                        tf.keras.layers.Conv2D(
+                            filters=filter_or_pooling,
+                            kernel_size=self._encoder_sizes[i],
+                            strides=self._encoder_strides[i],
+                            activation=self._encoder_activations[i],
+                        )
+                    )
+        self._encoder.add(tf.keras.layers.Flatten())
         self._encoder.add(
             tf.keras.layers.Dense(
                 self._latent * 2, activation=self._encoder_output_activation
             )
         )
 
+        self._decoder.add(tf.keras.layers.InputLayer(input_shape=(self._latent,)))
+        self._decoder.add(
+            tf.keras.layers.Dense(
+                self._decoder_input_reshape[0]
+                * self._decoder_input_reshape[1]
+                * self._decoder_input_reshape[2],
+                activation=self._decoder_input_activation,
+            )
+        )
+        self._decoder.add(
+            tf.keras.layers.Reshape(target_shape=self._decoder_input_reshape)
+        )
         for i in range(len(self._decoder_architecture)):
-            n_neurons = self._decoder_architecture[i]
             if self._decoder_activations is None:
-                self._decoder.add(tf.keras.layers.Dense(n_neurons))
+                self._decoder.add(
+                    tf.keras.layers.Conv2DTranspose(
+                        filters=self._decoder_architecture[i],
+                        kernel_size=self._decoder_sizes[i],
+                        strides=self._decoder_strides[i],
+                        padding="same",
+                    )
+                )
             else:
                 self._decoder.add(
-                    tf.keras.layers.Dense(
-                        n_neurons, activation=self._decoder_activations[i]
+                    tf.keras.layers.Conv2DTranspose(
+                        filters=self._decoder_architecture[i],
+                        kernel_size=self._decoder_sizes[i],
+                        strides=self._decoder_strides[i],
+                        activation=self._encoder_activations[i],
+                        padding="same",
                     )
                 )
         self._decoder.add(
-            tf.keras.layers.Dense(
-                self._length * self._width * self._channels,
-                activation=self._decoder_output_activation,
+            tf.keras.layers.Conv2DTranspose(
+                filters=self._channels,
+                kernel_size=self._decoder_output_size,
+                strides=1,
+                padding="same",
             )
         )
-        """ REVISAR """
 
     def __do_checks_for_init(
         self,
@@ -128,6 +196,7 @@ class CVAE(ImageVAE):
         decoder_input_reshape: Tuple[int, int, int],
         encoder_activations: Optional[List[Union[str, Callable, None]]],
         decoder_activations: Optional[List[Union[str, Callable, None]]],
+        decoder_output_size: int,
     ) -> None:
         for encoder_unit in encoder_architecture:
             if type(encoder_unit) is str:
@@ -178,7 +247,33 @@ class CVAE(ImageVAE):
                 "The strides of the decoder cannot have values lower than 1"
             )
 
-        """Ver que la entrada al decoder es decente"""
+        input_height: int
+        input_width: int
+        input_height, input_width, _ = decoder_input_reshape
+        for stride in decoder_strides:
+            input_height *= stride
+            input_width *= stride
+
+        incorrect_height: bool = input_height != self._height
+        if incorrect_height:
+            raise IllegalArchitectureException(
+                f"The resulting height of the decoder's output images would be {input_height}"
+                f" and should be {self._height}. Change either the values of the decoder's strides"
+                " or the input shape"
+            )
+
+        incorrect_width: bool = input_width != self._width
+        if incorrect_width:
+            raise IllegalArchitectureException(
+                f"The resulting width of the decoder's output images would be {input_width}"
+                f" and should be {self._width}. Change either the values of the decoder's strides"
+                " or the input shape"
+            )
+
+        if decoder_output_size <= 0:
+            raise IllegalValueException(
+                "The 'decoder output size' parameter cannot be less than or equal to zero."
+            )
 
         if encoder_activations is not None and (
             len(encoder_activations) != len(encoder_architecture)

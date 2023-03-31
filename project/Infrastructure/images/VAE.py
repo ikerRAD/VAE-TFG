@@ -1,13 +1,12 @@
 from typing import List, Optional, Union, Callable
 import tensorflow as tf
 import numpy as np
+
+from project.Infrastructure.images.main.image_VAE import ImageVAE
 from project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from infrastructure.images.main.image_VAE import ImageVAE
-from tensorflow.python.ops.numpy_ops import np_config
 
-np_config.enable_numpy_behavior()
 
 """
 Implementation of the most common version of the VAE.
@@ -23,11 +22,11 @@ class VAE(ImageVAE):
         decoder_activations: Optional[List[Union[str, Callable, None]]] = None,
         encoder_output_activation: Union[str, Callable, None] = None,
         decoder_output_activation: Union[str, Callable, None] = None,
-        dataset: Optional[List[int]] = None,
+        dataset: Optional[List] = None,
         learning_rate: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
-        image_length: int = 28,
+        image_height: int = 28,
         image_width: int = 28,
         n_channels: int = 1,
         normalize_data: bool = True,
@@ -40,7 +39,7 @@ class VAE(ImageVAE):
             learning_rate,
             n_distributions,
             max_iter,
-            image_length,
+            image_height,
             image_width,
             n_channels,
             normalize_data,
@@ -73,7 +72,7 @@ class VAE(ImageVAE):
 
         self._encoder.add(
             tf.keras.layers.InputLayer(
-                input_shape=(self._length, self._width, self._channels)
+                input_shape=(self._height, self._width, self._channels)
             )
         )
         self._encoder.add(tf.keras.layers.Flatten())
@@ -107,7 +106,7 @@ class VAE(ImageVAE):
                 )
         self._decoder.add(
             tf.keras.layers.Dense(
-                self._length * self._width * self._channels,
+                self._height * self._width * self._channels,
                 activation=self._decoder_output_activation,
             )
         )
