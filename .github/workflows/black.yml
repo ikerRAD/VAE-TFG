@@ -1,11 +1,37 @@
-name: black-action
-on: [pull_request]
+name: Lint
+on:
+  - pull_request
+
 jobs:
-  linter_name:
-    name: LINT
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: rickstaa/action-black@v1
+      - uses: actions/checkout@v3
+
+      - uses: technote-space/get-diff-action@v3
+        name: Git Diff
+        id: git_diff
         with:
-          black_args: ". --check"
+          PREFIX_FILTER: |
+            src
+          SUFFIX_FILTER: .py
+
+      - uses: ./.github/workflows/lint_install
+        name: Install tools
+        if: steps.git_diff.outputs.diff
+
+      - name: Black
+        run: python -m black --config=pyproject.toml --check --diff ${{ steps.git_diff.outputs.diff }}
+        if: ${{ steps.git_diff.outputs.diff && always() }}
+
+      - name: Flake8
+        run: python -m flake8 --config=.flake8 ${{ steps.git_diff.outputs.diff }}
+        if: ${{ steps.git_diff.outputs.diff && always() }}
+
+      - name: MyPy
+        run: |
+            exclude_filters=$(python .github/workflows/read_excludes_from_toml.py pyproject.toml)
+            differing_files_filtered=$(python .github/workflows/get_filtered_files.py "${{ steps.git_diff.outputs.diff }}" "$exclude_filters")
+            if [ ! -z "$differing_files_filtered" ]; then mypy --config-file=pyproject.toml $differing_files_filtered; fi
+        if: ${{ steps.git_diff.outputs.diff && always() }}
+        continue-on-error: true
