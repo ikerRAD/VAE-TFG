@@ -87,7 +87,9 @@ class ImageVAE(VAEModel):
 
         self._epsilon: Optional[EpsilonGenerator] = None
 
-        self._loss_function = ImageLossFunctionSelector.select(ImageLossFunctionSelector.possible_keys()[0])
+        self._loss_function = ImageLossFunctionSelector.select(
+            ImageLossFunctionSelector.possible_keys()[0]
+        )
 
     def fit_dataset(
         self,
