@@ -30,7 +30,7 @@ class CVAE(ImageVAE):
         decoder_output_activation: Union[str, Callable, None] = None,
         decoder_output_size: int = 3,
         dataset: Optional[List] = None,
-        learning_rate: float = 0.0001,
+        learning_rate: float = 0.00001,
         n_distributions: int = 5,
         max_iter: int = 1000,
         image_height: int = 28,
@@ -100,23 +100,27 @@ class CVAE(ImageVAE):
             )
         )
         filter_or_pooling: Union[int, str]
+        sizes: int
+        strides: int
         for i in range(len(self._encoder_architecture)):
             filter_or_pooling = self._encoder_architecture[i]
+            sizes = self._encoder_sizes[i]
+            strides = self._encoder_strides[i]
             if type(filter_or_pooling) is str:
                 is_max_pool: bool = filter_or_pooling != "max_pool"
                 is_average_pool: bool = filter_or_pooling != "average_pool"
                 if is_max_pool:
                     self._encoder.add(
                         tf.keras.layers.MaxPooling2D(
-                            pool_size=self._encoder_sizes[i],
-                            strides=self._encoder_strides[i],
+                            pool_size=sizes,
+                            strides=strides,
                         )
                     )
                 elif is_average_pool:
                     self._encoder.add(
                         tf.keras.layers.AveragePooling2D(
-                            pool_size=self._encoder_sizes[i],
-                            strides=self._encoder_strides[i],
+                            pool_size=sizes,
+                            strides=strides,
                         )
                     )
             elif type(filter_or_pooling) is int:
@@ -124,16 +128,16 @@ class CVAE(ImageVAE):
                     self._encoder.add(
                         tf.keras.layers.Conv2D(
                             filters=filter_or_pooling,
-                            kernel_size=self._encoder_sizes[i],
-                            strides=self._encoder_strides[i],
+                            kernel_size=sizes,
+                            strides=strides,
                         )
                     )
                 else:
                     self._encoder.add(
                         tf.keras.layers.Conv2D(
                             filters=filter_or_pooling,
-                            kernel_size=self._encoder_sizes[i],
-                            strides=self._encoder_strides[i],
+                            kernel_size=sizes,
+                            strides=strides,
                             activation=self._encoder_activations[i],
                         )
                     )
@@ -156,22 +160,26 @@ class CVAE(ImageVAE):
         self._decoder.add(
             tf.keras.layers.Reshape(target_shape=self._decoder_input_reshape)
         )
+        filters: int
         for i in range(len(self._decoder_architecture)):
+            filters = self._decoder_architecture[i]
+            sizes = self._decoder_sizes[i]
+            strides = self._decoder_strides[i]
             if self._decoder_activations is None:
                 self._decoder.add(
                     tf.keras.layers.Conv2DTranspose(
-                        filters=self._decoder_architecture[i],
-                        kernel_size=self._decoder_sizes[i],
-                        strides=self._decoder_strides[i],
+                        filters=filters,
+                        kernel_size=sizes,
+                        strides=strides,
                         padding="same",
                     )
                 )
             else:
                 self._decoder.add(
                     tf.keras.layers.Conv2DTranspose(
-                        filters=self._decoder_architecture[i],
-                        kernel_size=self._decoder_sizes[i],
-                        strides=self._decoder_strides[i],
+                        filters=filters,
+                        kernel_size=sizes,
+                        strides=strides,
                         activation=self._encoder_activations[i],
                         padding="same",
                     )
