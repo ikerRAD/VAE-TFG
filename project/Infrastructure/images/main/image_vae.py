@@ -7,7 +7,7 @@ from tensorflow.python.ops.numpy_ops import np_config
 from project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
 from project.domain.Exceptions.illegal_value_exception import IllegalValueException
 from project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
-from project.domain.VAEModel import VAEModel
+from project.domain.vae_model import VAEModel
 from utils.batches.application.batch_selector import BatchSelector
 from utils.batches.domain.batch import Batch
 from utils.epsilons.application.epsilon_generator_selector import (
