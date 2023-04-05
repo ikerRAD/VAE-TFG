@@ -31,7 +31,7 @@ class TestImageLossFunctionSelector(TestCase):
         self.assertListEqual(expected_keys, retrieved_keys)
 
     @patch(
-        "utils.losses.images.application.image_loss_function_selector.dkl_mse",
+        "src.utils.losses.images.application.image_loss_function_selector.dkl_mse",
         return_value=(0.1, {"function_name": "dkl_mse"}),
     )
     def test_select(self, *_) -> None:
@@ -65,19 +65,19 @@ class TestImageLossFunctionSelector(TestCase):
                 self.assertEqual(scenario["function_return_value"], loss_function_value)
 
     @patch(
-        "utils.losses.images.application.image_loss_function_selector.tf.reduce_mean",
+        "src.utils.losses.images.application.image_loss_function_selector.tf.reduce_mean",
         return_value=0.0,
     )
     @patch(
-        "utils.losses.images.application.image_loss_function_selector.tf.keras.losses.mean_squared_error",
+        "src.utils.losses.images.application.image_loss_function_selector.tf.keras.losses.mean_squared_error",
         return_value=1.0,
     )
     @patch(
-        "utils.losses.images.application.image_loss_function_selector.tf.reduce_sum",
+        "src.utils.losses.images.application.image_loss_function_selector.tf.reduce_sum",
         return_value=2.0,
     )
     @patch(
-        "utils.losses.images.application.image_loss_function_selector.__log_normal_pdf"
+        "src.utils.losses.images.application.image_loss_function_selector.__log_normal_pdf"
     )
     def test_dkl_mse(
         self,
