@@ -8,7 +8,6 @@ jobs:
     name: Black-Flake8-Mypy
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source repository
       - uses: actions/checkout@v3
 
       - name: Black Lint
