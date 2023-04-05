@@ -2,7 +2,9 @@ from typing import Optional
 
 import tensorflow as tf
 
-from src.project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
+from src.project.domain.Exceptions.no_more_batches_exception import (
+    NoMoreBatchesException,
+)
 from src.utils.batches.domain.batch import Batch
 from src.utils.batches.domain.slice import Slice
 

@@ -9,7 +9,9 @@ from src.utils.epsilons.infrastructure.always_same_epsilon_generator import (
 from src.utils.epsilons.infrastructure.always_same_epsilon_set_generator import (
     AlwaysSameEpsilonSetGenerator,
 )
-from src.utils.epsilons.infrastructure.same_epsilon_generator import SameEpsilonGenerator
+from src.utils.epsilons.infrastructure.same_epsilon_generator import (
+    SameEpsilonGenerator,
+)
 from src.utils.epsilons.infrastructure.same_epsilon_set_generator import (
     SameEpsilonSetGenerator,
 )
