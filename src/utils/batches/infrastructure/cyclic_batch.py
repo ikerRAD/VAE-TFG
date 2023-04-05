@@ -2,8 +2,8 @@ from typing import Optional
 
 import tensorflow as tf
 
-from utils.batches.domain.batch import Batch
-from utils.batches.domain.slice import Slice
+from src.utils.batches.domain.batch import Batch
+from src.utils.batches.domain.slice import Slice
 
 """
 Cyclic batch, divides the dataset in batches of the specified size. It will always have a next batch.

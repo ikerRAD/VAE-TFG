@@ -3,8 +3,8 @@ from typing import Optional, List
 import numpy as np
 import tensorflow as tf
 
-from utils.batches.domain.batch import Batch
-from utils.batches.domain.slice import Slice
+from src.utils.batches.domain.batch import Batch
+from src.utils.batches.domain.slice import Slice
 
 """
 Random batch, divides the dataset in batches of the specified size. The last division might be ignored if it

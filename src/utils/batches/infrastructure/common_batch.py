@@ -2,9 +2,9 @@ from typing import Optional
 
 import tensorflow as tf
 
-from project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
-from utils.batches.domain.batch import Batch
-from utils.batches.domain.slice import Slice
+from src.project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
+from src.utils.batches.domain.batch import Batch
+from src.utils.batches.domain.slice import Slice
 
 """
 Common batch, divides the dataset in batches of the specified size. The last division might be smaller than the rest.

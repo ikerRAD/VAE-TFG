@@ -4,18 +4,18 @@ import tensorflow as tf
 from numpy import ndarray
 from tensorflow.python.ops.numpy_ops import np_config
 
-from project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
-from project.domain.Exceptions.illegal_value_exception import IllegalValueException
-from project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
-from project.domain.VAEModel import VAEModel
-from utils.batches.application.batch_selector import BatchSelector
-from utils.batches.domain.batch import Batch
-from utils.epsilons.application.epsilon_generator_selector import (
+from src.project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
+from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from src.project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
+from src.project.domain.VAEModel import VAEModel
+from src.utils.batches.application.batch_selector import BatchSelector
+from src.utils.batches.domain.batch import Batch
+from src.utils.epsilons.application import (
     EpsilonGeneratorSelector,
 )
-from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+from src.utils.epsilons import EpsilonGenerator
 
-from utils.losses.images.application.image_loss_function_selector import (
+from src.utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
 )
 

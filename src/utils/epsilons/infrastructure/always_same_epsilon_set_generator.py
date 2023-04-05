@@ -2,7 +2,7 @@ from typing import Optional
 
 import tensorflow as tf
 
-from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 """
 This epsilon generator will always generate the same epsilon set. All the rows could be different but the value
@@ -17,7 +17,8 @@ class AlwaysSameEpsilonSetGenerator(EpsilonGenerator):
 
     def set_up(self, n_rows: int, n_cols: int) -> None:
         super().set_up(n_rows, n_cols)
-        self._epsilon = tf.random.normal((self._rows, self._cols), seed=111)
+        tf.random.set_seed(111)
+        self._epsilon = tf.random.normal((self._rows, self._cols))
 
     def get(self) -> tf.Tensor:
         assert self._rows is not None
