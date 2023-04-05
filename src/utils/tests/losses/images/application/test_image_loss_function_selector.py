@@ -105,3 +105,4 @@ class TestImageLossFunctionSelector(TestCase):
         )
         reduce_sum_mock.assert_called_with(1.0, axis=[1, 2])
         mse_mock.assert_called_with(self.tensor_mock, self.tensor_mock)
+        self.assertTrue(False)
