@@ -4,29 +4,13 @@ on:
   - pull_request
 
 jobs:
-  lint:
+  linter_name:
+    name: Black
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source repository
       - uses: actions/checkout@v3
 
       - name: Black Lint
-      - uses: psf/black@stable
-
-      - name: Set up Python environment for Flake8
-      - uses: actions/setup-python@v4
+        uses: rickstaa/action-black@v1
         with:
-          python-version: "3.11"
-      - name: Flake8 Lint
-        uses: py-actions/flake8@v2
-
-      - name: Set up Python environment for MyPy
-        uses: actions/setup-python@v1
-        with:
-          python-version: "3.8"
-      - name: Install Dependencies
-        run: |
-          pip install mypy
-      - name: mypy
-        run: |
-          mypy src/
+          black_args: ". --check"
