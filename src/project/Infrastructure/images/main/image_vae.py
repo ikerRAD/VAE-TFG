@@ -4,9 +4,13 @@ import tensorflow as tf
 from numpy import ndarray
 from tensorflow.python.ops.numpy_ops import np_config
 
-from src.project.domain.Exceptions.illegal_dataset_exception import IllegalDatasetException
+from src.project.domain.Exceptions.illegal_dataset_exception import (
+    IllegalDatasetException,
+)
 from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
-from src.project.domain.Exceptions.no_more_batches_exception import NoMoreBatchesException
+from src.project.domain.Exceptions.no_more_batches_exception import (
+    NoMoreBatchesException,
+)
 from src.project.domain.vae_model import VAEModel
 from src.utils.batches.application.batch_selector import BatchSelector
 from src.utils.batches.domain.batch import Batch
