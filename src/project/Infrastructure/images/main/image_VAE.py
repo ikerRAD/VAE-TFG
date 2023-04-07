@@ -1,4 +1,4 @@
-from typing import Optional, List, Union, Tuple, Dict
+from typing import Optional, List, Union, Tuple, Dict, Callable
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from numpy import ndarray
@@ -14,10 +14,10 @@ from src.project.domain.Exceptions.no_more_batches_exception import (
 from src.project.domain.VAEModel import VAEModel
 from src.utils.batches.application.batch_selector import BatchSelector
 from src.utils.batches.domain.batch import Batch
-from src.utils.epsilons.application import (
+from src.utils.epsilons.application.epsilon_generator_selector import (
     EpsilonGeneratorSelector,
 )
-from src.utils.epsilons import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 from src.utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
@@ -29,15 +29,22 @@ np_config.enable_numpy_behavior()
 class ImageVAE(VAEModel):
     def __init__(
         self,
-        dataset: Optional[List] = None,
-        learning_rate: float = 0.0001,
-        n_distributions: int = 5,
-        max_iter: int = 1000,
-        image_height: int = 28,
-        image_width: int = 28,
-        n_channels: int = 1,
-        normalize_data: bool = True,
-        discretize_data: bool = False,
+        dataset: Optional[List],
+        loss: Union[
+            str,
+            Callable[
+                [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
+                Tuple[float, Dict[str, float]],
+            ],
+        ],
+        learning_rate: float,
+        n_distributions: int,
+        max_iter: int,
+        image_height: int,
+        image_width: int,
+        n_channels: int,
+        normalize_data: bool,
+        discretize_data: bool,
         *args,
         **kwargs,
     ):
@@ -54,6 +61,8 @@ class ImageVAE(VAEModel):
             image_width,
             n_channels,
         )
+
+        self.__do_loss_checks(loss)
 
         self._height: int
         self._width: int
@@ -91,9 +100,7 @@ class ImageVAE(VAEModel):
 
         self._epsilon: Optional[EpsilonGenerator] = None
 
-        self._loss_function = ImageLossFunctionSelector.select(
-            ImageLossFunctionSelector.possible_keys()[0]
-        )
+        self._loss_function = ImageLossFunctionSelector.select(loss)
 
     def fit_dataset(
         self,
@@ -107,6 +114,10 @@ class ImageVAE(VAEModel):
         sample_frequency: int = 10,
     ) -> Optional[List[float]]:
         loss_values: List[float]
+
+        self.__do_checks_for_epsilon_and_batch(
+            epsilon_generator, batch_size, batch_type
+        )
 
         self._epsilon = EpsilonGeneratorSelector.select(epsilon_generator)
 
@@ -374,3 +385,42 @@ class ImageVAE(VAEModel):
                 + "It usually is 1 if there is just one channel, 3 if the image follows the "
                 + "standarized RGB structure or 4 if a channel is added for opacity"
             )
+
+    @staticmethod
+    def __do_loss_checks(
+        loss: Union[
+            str,
+            Callable[
+                [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
+                Tuple[float, Dict[str, float]],
+            ],
+        ]
+    ) -> None:
+        if type(loss) is str:
+            if loss not in ImageLossFunctionSelector.possible_keys():
+                raise IllegalValueException(
+                    f"The loss function with the key '{loss}' does not exist"
+                )
+
+    @staticmethod
+    def __do_checks_for_epsilon_and_batch(
+        epsilon_generator: Union[str, EpsilonGenerator],
+        batch_size: int,
+        batch_type: Optional[Union[str, Batch]],
+    ) -> None:
+        if type(epsilon_generator) is str:
+            if epsilon_generator not in EpsilonGeneratorSelector.possible_keys():
+                raise IllegalValueException(
+                    f"The epsilon generator with the key '{epsilon_generator}' does not exist"
+                )
+
+        if batch_size <= 0:
+            raise IllegalValueException(
+                f"The batch size cannot be lower than 1, got {batch_size}"
+            )
+
+        if type(batch_type) is str:
+            if batch_type not in BatchSelector.possible_keys():
+                raise IllegalValueException(
+                    f"The batch with the key '{batch_type}' does not exist"
+                )

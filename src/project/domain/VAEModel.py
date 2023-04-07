@@ -6,7 +6,7 @@ from src.project.domain.Exceptions.illegal_architecture_exception import (
 )
 from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
 from src.utils.batches.domain.batch import Batch
-from src.utils.epsilons import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 """
 Interface for all the VAE and CVAE implementations. The interface follows the a
@@ -16,12 +16,7 @@ sklearn-like structure.
 
 class VAEModel(ABC, tf.keras.Model):
     def __init__(
-        self,
-        learning_rate: float = 0.0001,
-        n_distributions: int = 5,
-        max_iter: int = 1000,
-        *args,
-        **kwargs
+        self, learning_rate: float, n_distributions: int, max_iter: int, *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
         self.__do_hyperparam_checks(learning_rate, n_distributions, max_iter)
@@ -34,12 +29,12 @@ class VAEModel(ABC, tf.keras.Model):
     @abstractmethod
     def fit_dataset(
         self,
-        return_loss: bool = False,
-        epsilon_generator: Union[str, EpsilonGenerator] = "always_same_epsilon",
-        batch_size: int = 100,
-        batch_type: Optional[Union[str, Batch]] = None,
-        generate_samples: bool = True,
-        sample_frequency: int = 10,
+        return_loss: bool,
+        epsilon_generator: Union[str, EpsilonGenerator],
+        batch_size: int,
+        batch_type: Optional[Union[str, Batch]],
+        generate_samples: bool,
+        sample_frequency: int,
     ) -> Optional[List[float]]:
         pass
 
@@ -63,8 +58,8 @@ class VAEModel(ABC, tf.keras.Model):
     def change_dataset(
         self,
         dataset: tf.Tensor,
-        normalize_data: bool = True,
-        discretize_data: bool = False,
+        normalize_data: bool,
+        discretize_data: bool,
     ) -> None:
         pass
 
@@ -72,9 +67,9 @@ class VAEModel(ABC, tf.keras.Model):
     def add_train_instances(
         self,
         instances: tf.Tensor,
-        normalize_data: bool = True,
-        discretize_data: bool = False,
-        shuffle_data: bool = False,
+        normalize_data: bool,
+        discretize_data: bool,
+        shuffle_data: bool,
     ) -> None:
         pass
 

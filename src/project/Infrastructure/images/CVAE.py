@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, Callable, Tuple
+from typing import List, Optional, Union, Callable, Tuple, Dict
 import tensorflow as tf
 import numpy as np
 
@@ -7,6 +7,9 @@ from src.project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
 from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from src.utils.losses.images.application.image_loss_function_selector import (
+    ImageLossFunctionSelector,
+)
 
 """
 Implementation of the most common version of the CVAE.
@@ -30,6 +33,13 @@ class CVAE(ImageVAE):
         decoder_output_activation: Union[str, Callable, None] = None,
         decoder_output_size: int = 3,
         dataset: Optional[List] = None,
+        loss: Union[
+            str,
+            Callable[
+                [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
+                Tuple[float, Dict[str, float]],
+            ],
+        ] = ImageLossFunctionSelector.possible_keys()[0],
         learning_rate: float = 0.00001,
         n_distributions: int = 5,
         max_iter: int = 1000,
@@ -43,6 +53,7 @@ class CVAE(ImageVAE):
     ) -> None:
         super().__init__(
             dataset,
+            loss,
             learning_rate,
             n_distributions,
             max_iter,
