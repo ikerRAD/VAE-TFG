@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Dict
 import tensorflow as tf
 from src.project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
@@ -35,7 +35,7 @@ class VAEModel(ABC, tf.keras.Model):
         batch_type: Optional[Union[str, Batch]],
         generate_samples: bool,
         sample_frequency: int,
-    ) -> Optional[List[float]]:
+    ) -> Optional[Tuple[List[float], List[Dict[str, float]]]]:
         pass
 
     @abstractmethod

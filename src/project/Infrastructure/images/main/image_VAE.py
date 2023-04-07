@@ -112,8 +112,9 @@ class ImageVAE(VAEModel):
         batch_type: Optional[Union[str, Batch]] = BatchSelector.possible_keys()[0],
         generate_samples: bool = True,
         sample_frequency: int = 10,
-    ) -> Optional[List[float]]:
+    ) -> Optional[Tuple[List[float], List[Dict[str, float]]]]:
         loss_values: List[float]
+        loss_summaries: List[Dict[str, float]]
 
         self.__do_checks_for_epsilon_and_batch(
             epsilon_generator, batch_size, batch_type
@@ -124,7 +125,7 @@ class ImageVAE(VAEModel):
         if batch_type is None:
             self._epsilon.set_up(self._train_images.shape[0], self._latent)
 
-            loss_values = self._iterate_without_batch(
+            loss_values, loss_summaries = self._iterate_without_batch(
                 self._train_images, generate_samples, sample_frequency
             )
         else:
@@ -133,12 +134,12 @@ class ImageVAE(VAEModel):
             the_batch: Batch = BatchSelector.select(batch_type)
 
             the_batch.set_up(self._train_images, batch_size)
-            loss_values = self._iterate_with_batch(
+            loss_values, loss_summaries = self._iterate_with_batch(
                 the_batch, generate_samples, sample_frequency
             )
 
         if return_loss:
-            return loss_values
+            return loss_values, loss_summaries
 
     def _encode(self, x: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
         means, logvars = tf.split(self._encoder(x), num_or_size_splits=2, axis=1)
@@ -165,7 +166,7 @@ class ImageVAE(VAEModel):
 
     @tf.function
     @tf.autograph.experimental.do_not_convert
-    def _train_step(self, x: tf.Tensor) -> float:
+    def _train_step(self, x: tf.Tensor) -> Tuple[float, Dict[str, float]]:
         with tf.GradientTape() as tape:
             means: tf.Tensor
             logvars: tf.Tensor
@@ -179,35 +180,44 @@ class ImageVAE(VAEModel):
 
             gradients = tape.gradient(loss, self.trainable_variables)
             self._optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-            return loss
+            return loss, loss_summary
 
     def _iterate_without_batch(
         self,
         train_images: tf.Tensor,
         generate_images: bool,
         sample_frequency: int,
-    ) -> List[float]:
+    ) -> Tuple[List[float], List[Dict[str, float]]]:
         loss_values: List[float] = []
+        loss_summaries: List[Dict[str, float]] = []
 
+        partial_loss: float
+        partial_summary: Dict[str, float]
         for iteration in range(1, self._iterations + 1):
             print(f"Iteration number {iteration}")
             if generate_images:
                 if iteration % sample_frequency == 0:
                     self.generate_random_images(save=False)
 
-            partial_loss: List[float] = [self._train_step(train_images)]
+            partial_loss, partial_summary = self._train_step(train_images)
 
-            loss_values.append(tf.reduce_mean(partial_loss))
+            loss_values.append(partial_loss)
+            loss_summaries.append(partial_summary)
 
-        return loss_values
+        return loss_values, loss_summaries
 
     def _iterate_with_batch(
         self,
         the_batch: Batch,
         generate_images: bool,
         sample_frequency: int,
-    ) -> List[float]:
+    ) -> Tuple[List[float], List[Dict[str, float]]]:
         loss_values: List[float] = []
+        loss_summaries: List[Dict[str, float]] = []
+
+        partial_loss: float
+        partial_summary: Dict[str, float]
+
         train_images: tf.Tensor
 
         try:
@@ -218,13 +228,15 @@ class ImageVAE(VAEModel):
                         self.generate_random_images(save=False)
 
                 train_images = the_batch.next()
-                partial_loss: List[float] = [self._train_step(train_images)]
+                partial_loss, partial_summary = self._train_step(train_images)
 
-                loss_values.append(tf.reduce_mean(partial_loss))
+                loss_values.append(partial_loss)
+                loss_summaries.append(partial_summary)
+
         except NoMoreBatchesException as termination:
             print(str(termination))
 
-        return loss_values
+        return loss_values, loss_summaries
 
     def get_image_shape(self) -> Tuple[int, int, int]:
         return self._height, self._width, self._channels
