@@ -2,7 +2,7 @@ from typing import Optional, List
 
 import tensorflow as tf
 
-from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 """
 This epsilon generator will generate the same epsilon. All the rows will be the same but the value

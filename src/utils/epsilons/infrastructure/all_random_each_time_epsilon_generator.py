@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 """
 This epsilon generator will always generate the same epsilon set. All the rows could be different and the value

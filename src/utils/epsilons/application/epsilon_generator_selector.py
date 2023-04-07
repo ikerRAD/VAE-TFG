@@ -3,23 +3,25 @@ Class for selecting different epsilon generators given the instance itself or an
 """
 from typing import Union, List
 
-from utils.epsilons.infrastructure.always_same_epsilon_generator import (
+from src.utils.epsilons.infrastructure.always_same_epsilon_generator import (
     AlwaysSameEpsilonGenerator,
 )
-from utils.epsilons.infrastructure.always_same_epsilon_set_generator import (
+from src.utils.epsilons.infrastructure.always_same_epsilon_set_generator import (
     AlwaysSameEpsilonSetGenerator,
 )
-from utils.epsilons.infrastructure.same_epsilon_generator import SameEpsilonGenerator
-from utils.epsilons.infrastructure.same_epsilon_set_generator import (
+from src.utils.epsilons.infrastructure.same_epsilon_generator import (
+    SameEpsilonGenerator,
+)
+from src.utils.epsilons.infrastructure.same_epsilon_set_generator import (
     SameEpsilonSetGenerator,
 )
-from utils.epsilons.infrastructure.only_one_each_time_epsilon_generator import (
+from src.utils.epsilons.infrastructure.only_one_each_time_epsilon_generator import (
     OnlyOneEachTimeEpsilonGenerator,
 )
-from utils.epsilons.infrastructure.all_random_each_time_epsilon_generator import (
+from src.utils.epsilons.infrastructure.all_random_each_time_epsilon_generator import (
     AllRandomEachTimeEpsilonGenerator,
 )
-from utils.epsilons.domain.epsilon_generator import EpsilonGenerator
+from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 
 
 class EpsilonGeneratorSelector:

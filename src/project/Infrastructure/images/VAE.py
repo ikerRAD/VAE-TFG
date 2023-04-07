@@ -2,8 +2,8 @@ from typing import List, Optional, Union, Callable
 import tensorflow as tf
 import numpy as np
 
-from project.Infrastructure.images.main.image_VAE import ImageVAE
-from project.domain.Exceptions.illegal_architecture_exception import (
+from src.project.Infrastructure.images.main.image_VAE import ImageVAE
+from src.project.domain.Exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
 
