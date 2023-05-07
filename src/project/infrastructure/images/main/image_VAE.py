@@ -8,7 +8,7 @@ from src.project.domain.Exceptions.illegal_dataset_exception import (
     IllegalDatasetException,
 )
 from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
-from src.utils.batches.domain.no_more_batches_exception import (
+from src.utils.batches.domain.exceptions.no_more_batches_exception import (
     NoMoreBatchesException,
 )
 from src.project.domain.VAEModel import VAEModel

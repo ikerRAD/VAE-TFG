@@ -2,7 +2,7 @@ from typing import Optional
 
 import tensorflow as tf
 
-from src.utils.batches.domain.no_more_batches_exception import (
+from src.utils.batches.domain.exceptions.no_more_batches_exception import (
     NoMoreBatchesException,
 )
 from src.utils.batches.domain.batch import Batch
