@@ -137,10 +137,10 @@ class VAE(ImageVAE):
     ) -> Optional[List[Union[str, Callable, None]]]:
         return self._encoder_activations
 
-    def get_decoder_output_activations(self) -> Union[str, Callable, None]:
+    def get_decoder_output_activation(self) -> Union[str, Callable, None]:
         return self._decoder_output_activation
 
-    def get_encoder_output_activations(self) -> Union[str, Callable, None]:
+    def get_encoder_output_activation(self) -> Union[str, Callable, None]:
         return self._encoder_output_activation
 
     def __do_checks_for_init(
