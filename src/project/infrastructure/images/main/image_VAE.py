@@ -4,10 +4,10 @@ import tensorflow as tf
 from numpy import ndarray
 from tensorflow.python.ops.numpy_ops import np_config
 
-from src.project.domain.Exceptions.illegal_dataset_exception import (
+from src.project.domain.exceptions.illegal_dataset_exception import (
     IllegalDatasetException,
 )
-from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from src.project.domain.exceptions.illegal_value_exception import IllegalValueException
 from src.utils.batches.domain.exceptions.no_more_batches_exception import (
     NoMoreBatchesException,
 )
