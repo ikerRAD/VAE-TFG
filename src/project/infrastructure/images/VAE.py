@@ -2,8 +2,8 @@ from typing import List, Optional, Union, Callable, Dict, Tuple
 import tensorflow as tf
 import numpy as np
 
-from src.project.Infrastructure.images.main.image_VAE import ImageVAE
-from src.project.domain.Exceptions.illegal_architecture_exception import (
+from src.project.infrastructure.images.main.image_VAE import ImageVAE
+from src.project.domain.exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
 from src.utils.losses.images.application.image_loss_function_selector import (
@@ -137,10 +137,10 @@ class VAE(ImageVAE):
     ) -> Optional[List[Union[str, Callable, None]]]:
         return self._encoder_activations
 
-    def get_decoder_output_activations(self) -> Union[str, Callable, None]:
+    def get_decoder_output_activation(self) -> Union[str, Callable, None]:
         return self._decoder_output_activation
 
-    def get_encoder_output_activations(self) -> Union[str, Callable, None]:
+    def get_encoder_output_activation(self) -> Union[str, Callable, None]:
         return self._encoder_output_activation
 
     def __do_checks_for_init(

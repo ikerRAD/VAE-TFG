@@ -1,10 +1,10 @@
 from abc import abstractmethod, ABC
 from typing import Optional, Union, List, Tuple, Dict
 import tensorflow as tf
-from src.project.domain.Exceptions.illegal_architecture_exception import (
+from src.project.domain.exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from src.project.domain.exceptions.illegal_value_exception import IllegalValueException
 from src.utils.batches.domain.batch import Batch
 from src.utils.epsilons.domain.epsilon_generator import EpsilonGenerator
 

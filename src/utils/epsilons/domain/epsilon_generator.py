@@ -11,7 +11,7 @@ Generic skeleton to build up new epsilon generators
 class EpsilonGenerator(ABC):
     def __init__(self) -> None:
         self._cols: Optional[int] = None
-        self._cols: Optional[int] = None
+        self._rows: Optional[int] = None
 
     def set_up(self, n_rows: int, n_cols: int) -> None:
         assert n_rows > 0

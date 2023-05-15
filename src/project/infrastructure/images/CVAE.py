@@ -2,11 +2,11 @@ from typing import List, Optional, Union, Callable, Tuple, Dict
 import tensorflow as tf
 import numpy as np
 
-from src.project.Infrastructure.images.main.image_VAE import ImageVAE
-from src.project.domain.Exceptions.illegal_architecture_exception import (
+from src.project.infrastructure.images.main.image_VAE import ImageVAE
+from src.project.domain.exceptions.illegal_architecture_exception import (
     IllegalArchitectureException,
 )
-from src.project.domain.Exceptions.illegal_value_exception import IllegalValueException
+from src.project.domain.exceptions.illegal_value_exception import IllegalValueException
 from src.utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
 )
