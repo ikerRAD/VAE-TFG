@@ -204,6 +204,42 @@ class CVAE(ImageVAE):
             )
         )
 
+    def get_encoder_architecture(self) -> List[Union[int, str]]:
+        return self._encoder_architecture
+
+    def get_decoder_architecture(self) -> List[int]:
+        return self._decoder_architecture
+
+    def get_encoder_sizes(self) -> List[int]:
+        return self._encoder_sizes
+
+    def get_decoder_sizes(self) -> List[int]:
+        return self._decoder_sizes
+
+    def get_encoder_strides(self) -> List[int]:
+        return self._encoder_strides
+
+    def get_decoder_strides(self) -> List[int]:
+        return self._decoder_strides
+
+    def get_decoder_input_reshape(self) -> Tuple[int, int, int]:
+        return self._decoder_input_reshape
+
+    def get_encoder_activations(self) -> Optional[List[Union[str, Callable, None]]]:
+        return self._encoder_activations
+
+    def get_decoder_activations(self) -> Optional[List[Union[str, Callable, None]]]:
+        return self._decoder_activations
+
+    def get_encoder_output_activation(self) -> Union[str, Callable, None]:
+        return self._encoder_output_activation
+
+    def get_decoder_output_activation(self) -> Union[str, Callable, None]:
+        return self._decoder_output_activation
+
+    def get_decoder_output_size(self) -> int:
+        return self._decoder_output_size
+
     def __do_checks_for_init(
         self,
         encoder_architecture: List[Union[int, str]],
