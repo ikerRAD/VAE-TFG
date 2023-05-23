@@ -94,6 +94,8 @@ class ImageVAE(VAEModel):
                 tf.where(self._train_images > 0.5 * normalizer, 1.0 * normalizer, 0.0),
                 tf.float32,
             )
+        else:
+            self._train_images = tf.cast(self._train_images, tf.float32)
 
         self._encoder = tf.keras.Sequential()
         self._decoder = tf.keras.Sequential()
