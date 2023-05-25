@@ -1,6 +1,5 @@
 import tensorflow as tf
 from typing import Callable, List, Union, Tuple, Dict
-import numpy as np
 
 #  PRIVATE FUNCTIONS
 
@@ -211,29 +210,6 @@ def beta_50_cross_entropy(
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
     return __beta_vae_dkl_cross_entropy(50, means, logvars, x, x_generated)
-
-
-#  STICK-BREAKING VAE
-
-
-def sb_mse(
-    z: tf.Tensor,
-    means: tf.Tensor,
-    logvars: tf.Tensor,
-    x: tf.Tensor,
-    x_generated: tf.Tensor,
-) -> Tuple[float, Dict[str, float]]:
-    pass
-
-
-def sb_cross_entropy(
-    z: tf.Tensor,
-    means: tf.Tensor,
-    logvars: tf.Tensor,
-    x: tf.Tensor,
-    x_generated: tf.Tensor,
-) -> Tuple[float, Dict[str, float]]:
-    pass
 
 
 #  SELECTOR
