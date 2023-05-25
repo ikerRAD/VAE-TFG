@@ -3,12 +3,9 @@ from typing import Callable, List, Union, Tuple, Dict, Optional
 
 
 #  PRIVATE FUNCTIONS
-from numpy import nan
 
 
 def __beta_fn(a: tf.Tensor, b: tf.Tensor) -> tf.Tensor:
-    if a == nan:
-        a = 10000.
     return tf.exp(tf.math.lgamma(a) + tf.math.lgamma(b) - tf.math.lgamma(a + b))
 
 
@@ -265,7 +262,7 @@ def beta_50_cross_entropy(
 
 #  STICK-BREAKING VAE
 
-@tf.function
+
 def sb_mse(
     z: tf.Tensor,
     alpha: tf.Tensor,
