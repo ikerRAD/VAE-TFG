@@ -1,3 +1,5 @@
+from enum import Enum
+
 import tensorflow as tf
 from typing import Callable, List, Union, Tuple, Dict, Optional
 
@@ -305,27 +307,33 @@ def sb_cross_entropy(
 #  SELECTOR
 
 
+class ImageLosses(Enum):
+    Dkl_MSE = "dkl_mse"
+    Dkl_CROSS_ENTROPY = "dkl_cross_entropy"
+    BETA2_MSE = "beta_2_mse"
+    BETA5_MSE = "beta_5_mse"
+    BETA10_MSE = "beta_10_mse"
+    BETA25_MSE = "beta_25_mse"
+    BETA35_MSE = "beta_35_mse"
+    BETA50_MSE = "beta_50_mse"
+    BETA2_CROSS_ENTROPY = "beta_2_cross_entropy"
+    BETA5_CROSS_ENTROPY = "beta_5_cross_entropy"
+    BETA10_CROSS_ENTROPY = "beta_10_cross_entropy"
+    BETA25_CROSS_ENTROPY = "beta_25_cross_entropy"
+    BETA35_CROSS_ENTROPY = "beta_35_cross_entropy"
+    BETA50_CROSS_ENTROPY = "beta_50_cross_entropy"
+    STICKBREAKING_MSE = "sb_mse"
+    STICKBREAKING_CROSS_ENTROPY = "sb_cross_entropy"
+
+    @staticmethod
+    def possible_keys() -> List[str]:
+        return [elem.value for elem in ImageLosses]
+
+
 class ImageLossFunctionSelector:
     @staticmethod
     def possible_keys() -> List[str]:
-        return [
-            "dkl_mse",
-            "dkl_cross_entropy",
-            "beta_2_mse",
-            "beta_5_mse",
-            "beta_10_mse",
-            "beta_25_mse",
-            "beta_35_mse",
-            "beta_50_mse",
-            "beta_2_cross_entropy",
-            "beta_5_cross_entropy",
-            "beta_10_cross_entropy",
-            "beta_25_cross_entropy",
-            "beta_35_cross_entropy",
-            "beta_50_cross_entropy",
-            "sb_mse",
-            "sb_cross_entropy",
-        ]
+        return ImageLosses.possible_keys()
 
     @staticmethod
     def select(
@@ -340,52 +348,52 @@ class ImageLossFunctionSelector:
         [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
         Tuple[float, Dict[str, float]],
     ]:
-        if function == "dkl_mse":
+        if function == ImageLosses.Dkl_MSE.value:
             return dkl_mse
 
-        if function == "dkl_cross_entropy":
+        if function == ImageLosses.Dkl_CROSS_ENTROPY.value:
             return dkl_cross_entropy
 
-        if function == "beta_2_mse":
+        if function == ImageLosses.BETA2_MSE.value:
             return beta_2_mse
 
-        if function == "beta_5_mse":
+        if function == ImageLosses.BETA5_MSE.value:
             return beta_5_mse
 
-        if function == "beta_10_mse":
+        if function == ImageLosses.BETA10_MSE.value:
             return beta_10_mse
 
-        if function == "beta_25_mse":
+        if function == ImageLosses.BETA25_MSE.value:
             return beta_25_mse
 
-        if function == "beta_35_mse":
+        if function == ImageLosses.BETA35_MSE.value:
             return beta_35_mse
 
-        if function == "beta_50_mse":
+        if function == ImageLosses.BETA50_MSE.value:
             return beta_50_mse
 
-        if function == "beta_2_cross_entropy":
+        if function == ImageLosses.BETA2_CROSS_ENTROPY.value:
             return beta_2_cross_entropy
 
-        if function == "beta_5_cross_entropy":
+        if function == ImageLosses.BETA5_CROSS_ENTROPY.value:
             return beta_5_cross_entropy
 
-        if function == "beta_10_cross_entropy":
+        if function == ImageLosses.BETA10_CROSS_ENTROPY.value:
             return beta_10_cross_entropy
 
-        if function == "beta_25_cross_entropy":
+        if function == ImageLosses.BETA25_CROSS_ENTROPY.value:
             return beta_25_cross_entropy
 
-        if function == "beta_35_cross_entropy":
+        if function == ImageLosses.BETA35_CROSS_ENTROPY.value:
             return beta_35_cross_entropy
 
-        if function == "beta_50_cross_entropy":
+        if function == ImageLosses.BETA50_CROSS_ENTROPY.value:
             return beta_50_cross_entropy
 
-        if function == "sb_mse":
+        if function == ImageLosses.STICKBREAKING_MSE.value:
             return sb_mse
 
-        if function == "sb_cross_entropy":
+        if function == ImageLosses.STICKBREAKING_CROSS_ENTROPY.value:
             return sb_cross_entropy
 
         return function
