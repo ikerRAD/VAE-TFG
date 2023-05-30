@@ -232,6 +232,8 @@ class ImageVAE(VAEModel):
                 train_images = the_batch.next()
                 partial_loss, partial_summary = self._train_step(train_images)
 
+                if iteration % sample_frequency == 0:
+                    print(partial_summary)
                 loss_values.append(partial_loss)
                 loss_summaries.append(partial_summary)
 

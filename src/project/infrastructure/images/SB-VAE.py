@@ -20,6 +20,8 @@ ALLOWED_LOSSES = [
 Implementation of the most common version of the VAE.
 """
 
+def prueba(x, name= None):
+    return tf.maximum(tf.math.softplus(x, name), 1.)
 
 class SBVAE(VAE):
     def __init__(
@@ -57,7 +59,7 @@ class SBVAE(VAE):
             decoder_architecture,
             encoder_activations,
             decoder_activations,
-            tf.math.softplus,
+            prueba,
             decoder_output_activation,
             dataset,
             loss,
