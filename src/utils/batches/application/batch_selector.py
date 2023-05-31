@@ -21,7 +21,6 @@ class BatchSelector:
         RANDOM_BATCH = "random"
         RANDOM_STRICT_BATCH = "random_strict"
 
-
     @classmethod
     def possible_keys(cls) -> List[str]:
         return [elem.value for elem in cls.Batches]
