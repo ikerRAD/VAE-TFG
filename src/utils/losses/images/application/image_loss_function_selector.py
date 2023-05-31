@@ -52,6 +52,44 @@ def __sb_dkl(
     return tf.reduce_sum(kl, axis=raxis)
 
 
+def __beta_sb_mse(
+    beta_hyper: Union[int, float],
+    alpha: tf.Tensor,
+    beta: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    summary: Dict[str, float] = {}
+
+    mse: tf.Tensor = tf.keras.losses.mean_squared_error(x, x_generated)
+    mse = tf.reduce_sum(mse, axis=[1, 2])
+    summary["mse"] = tf.reduce_mean(mse)
+
+    sb_dkl = tf.multiply(tf.cast(beta_hyper, tf.float32), __sb_dkl(alpha, beta))
+    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl)
+
+    return tf.reduce_mean(mse + sb_dkl), summary
+
+
+def __beta_sb_cross_entropy(
+    beta_hyper: Union[int, float],
+    alpha: tf.Tensor,
+    beta: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    summary: Dict[str, float] = {}
+
+    cross_ent = tf.nn.sigmoid_cross_entropy_with_logits(x, x_generated)
+    cross_ent = tf.reduce_sum(cross_ent, axis=[1, 2])
+    summary["cross_entropy"] = tf.reduce_mean(cross_ent)
+
+    sb_dkl = tf.multiply(tf.cast(beta_hyper, tf.float32), __sb_dkl(alpha, beta))
+    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl)
+
+    return tf.reduce_mean(cross_ent + sb_dkl), summary
+
+
 def __gauss_dkl(
     mean: tf.Tensor, logvar: tf.Tensor, raxis: Optional[int] = 1
 ) -> tf.Tensor:
@@ -61,7 +99,7 @@ def __gauss_dkl(
 
 
 def __beta_vae_dkl_mse(
-    beta: int,
+    beta: Union[int, float],
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
@@ -80,7 +118,7 @@ def __beta_vae_dkl_mse(
 
 
 def __beta_vae_dkl_cross_entropy(
-    beta: int,
+    beta: Union[int, float],
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
@@ -172,34 +210,24 @@ def beta_10_mse(
     return __beta_vae_dkl_mse(10, means, logvars, x, x_generated)
 
 
-def beta_25_mse(
+def beta_05_mse(
     z: tf.Tensor,
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_mse(25, means, logvars, x, x_generated)
+    return __beta_vae_dkl_mse(0.5, means, logvars, x, x_generated)
 
 
-def beta_35_mse(
+def beta_02_mse(
     z: tf.Tensor,
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_mse(35, means, logvars, x, x_generated)
-
-
-def beta_50_mse(
-    z: tf.Tensor,
-    means: tf.Tensor,
-    logvars: tf.Tensor,
-    x: tf.Tensor,
-    x_generated: tf.Tensor,
-) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_mse(50, means, logvars, x, x_generated)
+    return __beta_vae_dkl_mse(0.2, means, logvars, x, x_generated)
 
 
 def beta_2_cross_entropy(
@@ -232,34 +260,24 @@ def beta_10_cross_entropy(
     return __beta_vae_dkl_cross_entropy(10, means, logvars, x, x_generated)
 
 
-def beta_25_cross_entropy(
+def beta_05_cross_entropy(
     z: tf.Tensor,
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_cross_entropy(25, means, logvars, x, x_generated)
+    return __beta_vae_dkl_cross_entropy(0.5, means, logvars, x, x_generated)
 
 
-def beta_35_cross_entropy(
+def beta_02_cross_entropy(
     z: tf.Tensor,
     means: tf.Tensor,
     logvars: tf.Tensor,
     x: tf.Tensor,
     x_generated: tf.Tensor,
 ) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_cross_entropy(35, means, logvars, x, x_generated)
-
-
-def beta_50_cross_entropy(
-    z: tf.Tensor,
-    means: tf.Tensor,
-    logvars: tf.Tensor,
-    x: tf.Tensor,
-    x_generated: tf.Tensor,
-) -> Tuple[float, Dict[str, float]]:
-    return __beta_vae_dkl_cross_entropy(50, means, logvars, x, x_generated)
+    return __beta_vae_dkl_cross_entropy(0.2, means, logvars, x, x_generated)
 
 
 #  STICK-BREAKING VAE
@@ -279,7 +297,6 @@ def sb_mse(
     summary["mse"] = tf.reduce_mean(mse)
 
     sb_dkl = __sb_dkl(alpha, beta)
-    print(sb_dkl)
     summary["sb_dkl"] = tf.reduce_mean(sb_dkl)
 
     return tf.reduce_mean(mse + sb_dkl), summary
@@ -304,96 +321,199 @@ def sb_cross_entropy(
     return tf.reduce_mean(cross_ent + sb_dkl), summary
 
 
+#  STICK-BREAKING BETA VAE
+
+
+def sb_beta_2_mse(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_mse(2, means, logvars, x, x_generated)
+
+
+def sb_beta_5_mse(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_mse(5, means, logvars, x, x_generated)
+
+
+def sb_beta_05_mse(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_mse(0.5, means, logvars, x, x_generated)
+
+
+def sb_beta_02_mse(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_mse(0.2, means, logvars, x, x_generated)
+
+
+def sb_beta_2_cross_entropy(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_cross_entropy(2, means, logvars, x, x_generated)
+
+
+def sb_beta_5_cross_entropy(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_cross_entropy(5, means, logvars, x, x_generated)
+
+
+def sb_beta_05_cross_entropy(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_cross_entropy(0.5, means, logvars, x, x_generated)
+
+
+def sb_beta_02_cross_entropy(
+    z: tf.Tensor,
+    means: tf.Tensor,
+    logvars: tf.Tensor,
+    x: tf.Tensor,
+    x_generated: tf.Tensor,
+) -> Tuple[float, Dict[str, float]]:
+    return __beta_sb_cross_entropy(0.2, means, logvars, x, x_generated)
+
+
 #  SELECTOR
 
 
-class ImageLosses(Enum):
-    Dkl_MSE = "dkl_mse"
-    Dkl_CROSS_ENTROPY = "dkl_cross_entropy"
-    BETA2_MSE = "beta_2_mse"
-    BETA5_MSE = "beta_5_mse"
-    BETA10_MSE = "beta_10_mse"
-    BETA25_MSE = "beta_25_mse"
-    BETA35_MSE = "beta_35_mse"
-    BETA50_MSE = "beta_50_mse"
-    BETA2_CROSS_ENTROPY = "beta_2_cross_entropy"
-    BETA5_CROSS_ENTROPY = "beta_5_cross_entropy"
-    BETA10_CROSS_ENTROPY = "beta_10_cross_entropy"
-    BETA25_CROSS_ENTROPY = "beta_25_cross_entropy"
-    BETA35_CROSS_ENTROPY = "beta_35_cross_entropy"
-    BETA50_CROSS_ENTROPY = "beta_50_cross_entropy"
-    STICKBREAKING_MSE = "sb_mse"
-    STICKBREAKING_CROSS_ENTROPY = "sb_cross_entropy"
-
-    @staticmethod
-    def possible_keys() -> List[str]:
-        return [elem.value for elem in ImageLosses]
-
-
 class ImageLossFunctionSelector:
-    @staticmethod
-    def possible_keys() -> List[str]:
-        return ImageLosses.possible_keys()
+    class ImageLosses(Enum):
+        Dkl_MSE = "dkl_mse"
+        Dkl_CROSS_ENTROPY = "dkl_cross_entropy"
+        BETA2_MSE = "beta_2_mse"
+        BETA5_MSE = "beta_5_mse"
+        BETA10_MSE = "beta_10_mse"
+        BETA05_MSE = "beta_05_mse"
+        BETA02_MSE = "beta_02_mse"
+        BETA2_CROSS_ENTROPY = "beta_2_cross_entropy"
+        BETA5_CROSS_ENTROPY = "beta_5_cross_entropy"
+        BETA10_CROSS_ENTROPY = "beta_10_cross_entropy"
+        BETA05_CROSS_ENTROPY = "beta_05_cross_entropy"
+        BETA02_CROSS_ENTROPY = "beta_02_cross_entropy"
+        STICKBREAKING_MSE = "sb_mse"
+        STICKBREAKING_CROSS_ENTROPY = "sb_cross_entropy"
+        SB_BETA2_MSE = "sb_beta_2_mse"
+        SB_BETA5_MSE = "sb_beta_5_mse"
+        SB_BETA05_MSE = "sb_beta_05_mse"
+        SB_BETA02_MSE = "sb_beta_02_mse"
+        SB_BETA2_CROSS_ENTROPY = "sb_beta_2_cross_entropy"
+        SB_BETA5_CROSS_ENTROPY = "sb_beta_5_cross_entropy"
+        SB_BETA05_CROSS_ENTROPY = "sb_beta_05_cross_entropy"
+        SB_BETA02_CROSS_ENTROPY = "sb_beta_02_cross_entropy"
 
-    @staticmethod
+    @classmethod
+    def possible_keys(cls) -> List[str]:
+        return [elem.value for elem in cls.ImageLosses]
+
+    @classmethod
     def select(
+        cls,
         function: Union[
             str,
             Callable[
                 [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
                 Tuple[float, Dict[str, float]],
             ],
-        ]
+        ],
     ) -> Callable[
         [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
         Tuple[float, Dict[str, float]],
     ]:
-        if function == ImageLosses.Dkl_MSE.value:
+        if function == cls.ImageLosses.Dkl_MSE.value:
             return dkl_mse
 
-        if function == ImageLosses.Dkl_CROSS_ENTROPY.value:
+        if function == cls.ImageLosses.Dkl_CROSS_ENTROPY.value:
             return dkl_cross_entropy
 
-        if function == ImageLosses.BETA2_MSE.value:
+        if function == cls.ImageLosses.BETA2_MSE.value:
             return beta_2_mse
 
-        if function == ImageLosses.BETA5_MSE.value:
+        if function == cls.ImageLosses.BETA5_MSE.value:
             return beta_5_mse
 
-        if function == ImageLosses.BETA10_MSE.value:
+        if function == cls.ImageLosses.BETA10_MSE.value:
             return beta_10_mse
 
-        if function == ImageLosses.BETA25_MSE.value:
-            return beta_25_mse
+        if function == cls.ImageLosses.BETA05_MSE.value:
+            return beta_05_mse
 
-        if function == ImageLosses.BETA35_MSE.value:
-            return beta_35_mse
+        if function == cls.ImageLosses.BETA02_MSE.value:
+            return beta_02_mse
 
-        if function == ImageLosses.BETA50_MSE.value:
-            return beta_50_mse
-
-        if function == ImageLosses.BETA2_CROSS_ENTROPY.value:
+        if function == cls.ImageLosses.BETA2_CROSS_ENTROPY.value:
             return beta_2_cross_entropy
 
-        if function == ImageLosses.BETA5_CROSS_ENTROPY.value:
+        if function == cls.ImageLosses.BETA5_CROSS_ENTROPY.value:
             return beta_5_cross_entropy
 
-        if function == ImageLosses.BETA10_CROSS_ENTROPY.value:
+        if function == cls.ImageLosses.BETA10_CROSS_ENTROPY.value:
             return beta_10_cross_entropy
 
-        if function == ImageLosses.BETA25_CROSS_ENTROPY.value:
-            return beta_25_cross_entropy
+        if function == cls.ImageLosses.BETA05_CROSS_ENTROPY.value:
+            return beta_05_cross_entropy
 
-        if function == ImageLosses.BETA35_CROSS_ENTROPY.value:
-            return beta_35_cross_entropy
+        if function == cls.ImageLosses.BETA02_CROSS_ENTROPY.value:
+            return beta_02_cross_entropy
 
-        if function == ImageLosses.BETA50_CROSS_ENTROPY.value:
-            return beta_50_cross_entropy
-
-        if function == ImageLosses.STICKBREAKING_MSE.value:
+        if function == cls.ImageLosses.STICKBREAKING_MSE.value:
             return sb_mse
 
-        if function == ImageLosses.STICKBREAKING_CROSS_ENTROPY.value:
+        if function == cls.ImageLosses.STICKBREAKING_CROSS_ENTROPY.value:
             return sb_cross_entropy
+
+        if function == cls.ImageLosses.SB_BETA2_MSE.value:
+            return sb_beta_2_mse
+
+        if function == cls.ImageLosses.SB_BETA5_MSE.value:
+            return sb_beta_5_mse
+
+        if function == cls.ImageLosses.SB_BETA05_MSE.value:
+            return sb_beta_05_mse
+
+        if function == cls.ImageLosses.SB_BETA02_MSE.value:
+            return sb_beta_02_mse
+
+        if function == cls.ImageLosses.SB_BETA2_CROSS_ENTROPY.value:
+            return sb_beta_2_cross_entropy
+
+        if function == cls.ImageLosses.SB_BETA5_CROSS_ENTROPY.value:
+            return sb_beta_5_cross_entropy
+
+        if function == cls.ImageLosses.SB_BETA05_CROSS_ENTROPY.value:
+            return sb_beta_05_cross_entropy
+
+        if function == cls.ImageLosses.SB_BETA02_CROSS_ENTROPY.value:
+            return sb_beta_02_cross_entropy
 
         return function

@@ -7,21 +7,28 @@ from src.project.domain.exceptions.illegal_architecture_exception import (
 )
 from src.utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
-    ImageLosses,
 )
 
 
 ALLOWED_LOSSES = [
-    ImageLosses.STICKBREAKING_MSE.value,
-    ImageLosses.STICKBREAKING_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.STICKBREAKING_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.STICKBREAKING_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA2_MSE,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA5_MSE,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA05_MSE,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA02_MSE,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA2_CROSS_ENTROPY,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA5_CROSS_ENTROPY,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA05_CROSS_ENTROPY,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA02_CROSS_ENTROPY,
 ]
+
+SOFTPLUS_ROOF = 1.0
 
 """
 Implementation of the most common version of the VAE.
 """
 
-def prueba(x, name= None):
-    return tf.maximum(tf.math.softplus(x, name), 1.)
 
 class SBVAE(VAE):
     def __init__(
@@ -38,7 +45,7 @@ class SBVAE(VAE):
                 [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
                 Tuple[float, Dict[str, float]],
             ],
-        ] = ImageLosses.STICKBREAKING_MSE.value,
+        ] = ImageLossFunctionSelector.ImageLosses.STICKBREAKING_MSE.value,
         learning_rate: float = 0.0001,
         n_distributions: int = 5,
         max_iter: int = 1000,
@@ -59,7 +66,7 @@ class SBVAE(VAE):
             decoder_architecture,
             encoder_activations,
             decoder_activations,
-            prueba,
+            lambda x, name=None: tf.maximum(tf.math.softplus(x, name), SOFTPLUS_ROOF),
             decoder_output_activation,
             dataset,
             loss,

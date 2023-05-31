@@ -7,14 +7,24 @@ from src.project.domain.exceptions.illegal_architecture_exception import (
 )
 from src.utils.losses.images.application.image_loss_function_selector import (
     ImageLossFunctionSelector,
-    ImageLosses,
 )
 
 
 ALLOWED_LOSSES = [
-    ImageLosses.STICKBREAKING_MSE.value,
-    ImageLosses.STICKBREAKING_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.STICKBREAKING_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.STICKBREAKING_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA2_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA5_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA05_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA02_MSE.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA2_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA5_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA05_CROSS_ENTROPY.value,
+    ImageLossFunctionSelector.ImageLosses.SB_BETA02_CROSS_ENTROPY.value,
 ]
+
+
+SOFTPLUS_ROOF = 1.0
 
 """
 Implementation of the most common version of the CVAE.
@@ -43,7 +53,7 @@ class SBCVAE(CVAE):
                 [tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor],
                 Tuple[float, Dict[str, float]],
             ],
-        ] = ImageLosses.STICKBREAKING_MSE.value,
+        ] = ImageLossFunctionSelector.ImageLosses.STICKBREAKING_MSE.value,
         learning_rate: float = 0.00001,
         n_distributions: int = 5,
         max_iter: int = 1000,
@@ -69,7 +79,7 @@ class SBCVAE(CVAE):
             decoder_input_reshape,
             encoder_activations,
             decoder_activations,
-            tf.math.softplus,
+            lambda x, name=None: tf.maximum(tf.math.softplus(x, name), SOFTPLUS_ROOF),
             decoder_input_activation,
             decoder_output_activation,
             decoder_output_size,
@@ -86,8 +96,6 @@ class SBCVAE(CVAE):
             *args,
             **kwargs,
         )
-
-
 
     def __do_loss_check(
         self,
