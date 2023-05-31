@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Union, List
 
 from src.utils.batches.infrastructure.random_strict_batch import RandomStrictBatch
@@ -13,27 +14,32 @@ Class for selecting a batch given the batch itself or an identification string.
 
 
 class BatchSelector:
-    @staticmethod
-    def possible_keys() -> List[str]:
-        return [
-            "common",
-            "strict",
-            "cyclic",
-            "random",
-            "random_strict",
-        ]
+    class Batches(Enum):
+        COMMON_BATCH = "common"
+        STRICT_BATCH = "strict"
+        CYCLIC_BATCH = "cyclic"
+        RANDOM_BATCH = "random"
+        RANDOM_STRICT_BATCH = "random_strict"
 
-    @staticmethod
-    def select(batch_type: Union[str, Batch]) -> Batch:
-        if batch_type == "common":
+    @classmethod
+    def possible_keys(cls) -> List[str]:
+        return [elem.value for elem in cls.Batches]
+
+    @classmethod
+    def select(cls, batch_type: Union[str, Batch]) -> Batch:
+        if batch_type == cls.Batches.COMMON_BATCH:
             return CommonBatch()
-        elif batch_type == "strict":
+
+        if batch_type == cls.Batches.STRICT_BATCH:
             return StrictBatch()
-        elif batch_type == "cyclic":
+
+        if batch_type == cls.Batches.CYCLIC_BATCH:
             return CyclicBatch()
-        elif batch_type == "random":
+
+        if batch_type == cls.Batches.RANDOM_BATCH:
             return RandomBatch()
-        elif batch_type == "random_strict":
+
+        if batch_type == cls.Batches.RANDOM_STRICT_BATCH:
             return RandomStrictBatch()
-        else:
-            return batch_type
+
+        return batch_type
