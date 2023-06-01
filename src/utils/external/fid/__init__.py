@@ -1,1 +1,1 @@
-# code from https://github.com/unaigarciarena/BNet
+# code from https://github.com/AliaksandrSiarohin/gan
