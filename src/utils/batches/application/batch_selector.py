@@ -27,19 +27,19 @@ class BatchSelector:
 
     @classmethod
     def select(cls, batch_type: Union[str, Batch]) -> Batch:
-        if batch_type == cls.Batches.COMMON_BATCH:
+        if batch_type == cls.Batches.COMMON_BATCH.value:
             return CommonBatch()
 
-        if batch_type == cls.Batches.STRICT_BATCH:
+        if batch_type == cls.Batches.STRICT_BATCH.value:
             return StrictBatch()
 
-        if batch_type == cls.Batches.CYCLIC_BATCH:
+        if batch_type == cls.Batches.CYCLIC_BATCH.value:
             return CyclicBatch()
 
-        if batch_type == cls.Batches.RANDOM_BATCH:
+        if batch_type == cls.Batches.RANDOM_BATCH.value:
             return RandomBatch()
 
-        if batch_type == cls.Batches.RANDOM_STRICT_BATCH:
+        if batch_type == cls.Batches.RANDOM_STRICT_BATCH.value:
             return RandomStrictBatch()
 
         return batch_type
