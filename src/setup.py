@@ -4,7 +4,7 @@ setup(
     name='vaetfg',
     version='0.1',
     packages=find_packages(),
-    package_dir={'': ''},
+    package_dir={'': 'src'},
     url='https://github.com/ikerRAD/VAE-TFG.git',
     license='MIT',
     author='IkerPG',
