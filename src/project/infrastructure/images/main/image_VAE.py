@@ -196,7 +196,7 @@ class ImageVAE(VAEModel):
         partial_loss: float
         partial_summary: Dict[str, float]
         for iteration in range(1, self._iterations + 1):
-            print(f"Iteration number {iteration}")
+            # print(f"Iteration number {iteration}")
             if generate_images:
                 if iteration % sample_frequency == 0:
                     self.generate_random_images(save=False)
@@ -224,7 +224,7 @@ class ImageVAE(VAEModel):
 
         try:
             for iteration in range(1, self._iterations + 1):
-                print(f"Iteration number {iteration}")
+                # print(f"Iteration number {iteration}")
                 if generate_images:
                     if iteration % sample_frequency == 0:
                         self.generate_random_images(save=False)
@@ -232,8 +232,6 @@ class ImageVAE(VAEModel):
                 train_images = the_batch.next()
                 partial_loss, partial_summary = self._train_step(train_images)
 
-                if iteration % sample_frequency == 0:
-                    print(partial_summary)
                 loss_values.append(partial_loss)
                 loss_summaries.append(partial_summary)
 
