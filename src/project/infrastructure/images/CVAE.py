@@ -191,7 +191,7 @@ class CVAE(ImageVAE):
                         filters=filters,
                         kernel_size=sizes,
                         strides=strides,
-                        activation=self._dencoder_activations[i],
+                        activation=self._decoder_activations[i],
                         padding="same",
                     )
                 )
