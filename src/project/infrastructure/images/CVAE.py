@@ -30,8 +30,9 @@ class CVAE(ImageVAE):
         decoder_activations: Optional[List[Union[str, Callable, None]]] = None,
         encoder_output_activation: Union[str, Callable, None] = None,
         decoder_input_activation: Union[str, Callable, None] = None,
+        decoder_output_convolutional_activation: Union[str, Callable, None] = None,
+        decoder_output_convolutional_size: int = 3,
         decoder_output_activation: Union[str, Callable, None] = None,
-        decoder_output_size: int = 3,
         dataset: Optional[List] = None,
         loss: Union[
             str,
@@ -76,7 +77,7 @@ class CVAE(ImageVAE):
             decoder_input_reshape,
             encoder_activations,
             decoder_activations,
-            decoder_output_size,
+            decoder_output_convolutional_size,
         )
 
         self._encoder_architecture: List[Union[int, str]] = encoder_architecture
@@ -100,10 +101,13 @@ class CVAE(ImageVAE):
         self._decoder_input_activation: Union[
             str, Callable, None
         ] = decoder_input_activation
+        self._decoder_output_convolutional_activation: Union[
+            str, Callable, None
+        ] = decoder_output_convolutional_activation
+        self._decoder_output_convolutional_size: int = decoder_output_convolutional_size
         self._decoder_output_activation: Union[
             str, Callable, None
         ] = decoder_output_activation
-        self._decoder_output_size: int = decoder_output_size
 
         self._encoder.add(
             tf.keras.layers.InputLayer(
@@ -198,10 +202,19 @@ class CVAE(ImageVAE):
         self._decoder.add(
             tf.keras.layers.Conv2DTranspose(
                 filters=self._channels,
-                kernel_size=self._decoder_output_size,
+                kernel_size=self._decoder_output_convolutional_size,
                 strides=1,
-                activation=self._decoder_output_activation,
+                activation=self._decoder_output_convolutional_activation,
                 padding="same",
+            )
+        )
+
+        self._decoder.add(tf.keras.layers.Flatten())
+
+        self._decoder.add(
+            tf.keras.layers.Dense(
+                self._height * self._width * self._channels,
+                activation=self._decoder_output_activation,
             )
         )
 
@@ -252,7 +265,7 @@ class CVAE(ImageVAE):
         decoder_input_reshape: Tuple[int, int, int],
         encoder_activations: Optional[List[Union[str, Callable, None]]],
         decoder_activations: Optional[List[Union[str, Callable, None]]],
-        decoder_output_size: int,
+        decoder_output_convolutional_size: int,
     ) -> None:
         for encoder_unit in encoder_architecture:
             if type(encoder_unit) is str:
@@ -326,9 +339,9 @@ class CVAE(ImageVAE):
                 " or the input shape"
             )
 
-        if decoder_output_size <= 0:
+        if decoder_output_convolutional_size <= 0:
             raise IllegalValueException(
-                "The 'decoder output size' parameter cannot be less than or equal to zero."
+                "The 'decoder output convolutional size' parameter cannot be less than or equal to zero."
             )
 
         if encoder_activations is not None and (
