@@ -66,7 +66,7 @@ def __beta_sb_mse(
     summary["mse"] = tf.reduce_mean(mse)
 
     sb_dkl = tf.multiply(tf.cast(beta_hyper, tf.float32), __sb_dkl(alpha, beta))
-    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl)
+    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl) / beta
 
     return tf.reduce_mean(mse + sb_dkl), summary
 
@@ -85,7 +85,7 @@ def __beta_sb_cross_entropy(
     summary["cross_entropy"] = tf.reduce_mean(cross_ent)
 
     sb_dkl = tf.multiply(tf.cast(beta_hyper, tf.float32), __sb_dkl(alpha, beta))
-    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl)
+    summary["beta-sb_dkl"] = tf.reduce_mean(sb_dkl) / beta
 
     return tf.reduce_mean(cross_ent + sb_dkl), summary
 
@@ -112,7 +112,7 @@ def __beta_vae_dkl_mse(
     summary["mse"] = tf.reduce_mean(mse)
 
     dkl = tf.multiply(tf.cast(beta, tf.float32), __gauss_dkl(means, logvars))
-    summary["beta-dkl"] = tf.reduce_mean(dkl)
+    summary["beta-dkl"] = tf.reduce_mean(dkl) / beta
 
     return tf.reduce_mean(mse + dkl), summary
 
@@ -131,7 +131,7 @@ def __beta_vae_dkl_cross_entropy(
     summary["cross_entropy"] = tf.reduce_mean(cross_ent)
 
     dkl = tf.multiply(beta, __gauss_dkl(means, logvars))
-    summary["beta-dkl"] = tf.reduce_mean(dkl)
+    summary["beta-dkl"] = tf.reduce_mean(dkl) / beta
 
     return tf.reduce_mean(cross_ent + dkl), summary
 
